@@ -1,0 +1,36 @@
+# Dependencies
+desktop/node_modules/
+server/vendor/
+
+# Build output
+desktop/dist/
+server/tmp/
+server/feather
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Tauri build
+desktop/src-tauri/target/
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Claude Code
+.claude/

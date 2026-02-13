@@ -1,0 +1,71 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: feather
+      POSTGRES_PASSWORD: feather
+      POSTGRES_DB: feather
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U feather"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: feather
+      MINIO_ROOT_PASSWORD: featherpass
+    ports:
+      - "9002:9000"
+      - "9003:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:8080"
+    environment:
+      FEATHER_DATABASE_URL: "postgres://feather:feather@postgres:5432/feather?sslmode=disable"
+      FEATHER_REDIS_URL: "redis://redis:6379/0"
+      FEATHER_MINIO_ENDPOINT: "minio:9000"
+      FEATHER_MINIO_ACCESS_KEY: "feather"
+      FEATHER_MINIO_SECRET_KEY: "featherpass"
+      FEATHER_MINIO_USE_SSL: "false"
+      FEATHER_MINIO_BUCKET: "feather-files"
+      FEATHER_JWT_SECRET: "dev-secret-change-in-production"
+      FEATHER_SERVER_PORT: "8080"
+    volumes:
+      - ./server:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  miniodata:

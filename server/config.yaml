@@ -1,0 +1,29 @@
+server:
+  port: 8080
+
+database:
+  url: "postgres://feather:feather@localhost:5432/feather?sslmode=disable"
+
+redis:
+  url: "redis://localhost:6379/0"
+
+jwt:
+  secret: "dev-secret-change-in-production"
+  access_ttl: 15m
+  refresh_ttl: 168h  # 7 days
+
+minio:
+  endpoint: "localhost:9000"
+  access_key: "feather"
+  secret_key: "featherpass"
+  use_ssl: false
+  bucket: "feather-files"
+
+upload:
+  max_size: 20971520  # 20MB
+
+rate_limit:
+  unauthenticated: 100
+  authenticated: 300
+  webhooks: 60
+  auth: 10
