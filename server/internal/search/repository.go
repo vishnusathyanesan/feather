@@ -144,6 +144,9 @@ func (r *Repository) Search(ctx context.Context, params SearchParams) (*SearchRe
 		msg.User = &user
 		messages = append(messages, msg)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate search results: %w", err)
+	}
 
 	return &SearchResult{
 		Messages:   messages,

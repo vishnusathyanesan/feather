@@ -67,7 +67,12 @@ func (ts *TokenService) ValidateAccessToken(tokenString string) (uuid.UUID, stri
 		return uuid.Nil, "", fmt.Errorf("invalid claims")
 	}
 
-	userID, err := uuid.Parse(claims["sub"].(string))
+	sub, ok := claims["sub"].(string)
+	if !ok || sub == "" {
+		return uuid.Nil, "", fmt.Errorf("invalid claims: missing sub")
+	}
+
+	userID, err := uuid.Parse(sub)
 	if err != nil {
 		return uuid.Nil, "", fmt.Errorf("invalid user id: %w", err)
 	}

@@ -19,6 +19,7 @@ type User struct {
 	Email        string    `json:"email"`
 	Name         string    `json:"name"`
 	PasswordHash string    `json:"-"`
+	GoogleID     *string   `json:"-"`
 	AvatarURL    string    `json:"avatar_url"`
 	Role         UserRole  `json:"role"`
 	IsActive     bool      `json:"is_active"`
@@ -50,4 +51,8 @@ type RefreshRequest struct {
 type UpdateUserRequest struct {
 	Name      *string `json:"name" validate:"omitempty,min=2,max=100"`
 	AvatarURL *string `json:"avatar_url" validate:"omitempty,max=500"`
+}
+
+type GoogleOAuthRequest struct {
+	Credential string `json:"credential" validate:"required"`
 }

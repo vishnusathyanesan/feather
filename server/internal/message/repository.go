@@ -109,6 +109,9 @@ func (r *Repository) List(ctx context.Context, params model.MessageListParams) (
 		}
 		messages = append(messages, *msg)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate messages: %w", err)
+	}
 
 	return messages, nil
 }
@@ -138,6 +141,9 @@ func (r *Repository) GetThread(ctx context.Context, parentID uuid.UUID) ([]model
 			return nil, fmt.Errorf("scan thread message: %w", err)
 		}
 		messages = append(messages, *msg)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate thread messages: %w", err)
 	}
 
 	return messages, nil
@@ -183,6 +189,9 @@ func (r *Repository) GetReactions(ctx context.Context, messageID uuid.UUID) ([]m
 		}
 		groups = append(groups, g)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate reaction groups: %w", err)
+	}
 	return groups, nil
 }
 
@@ -212,6 +221,9 @@ func (r *Repository) GetReactionsForMessages(ctx context.Context, messageIDs []u
 			return nil, fmt.Errorf("scan reaction: %w", err)
 		}
 		result[msgID] = append(result[msgID], g)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate reactions for messages: %w", err)
 	}
 	return result, nil
 }

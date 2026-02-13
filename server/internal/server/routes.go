@@ -31,6 +31,7 @@ func (s *Server) setupRoutes() {
 			r.Post("/register", s.authHandler.Register)
 			r.Post("/login", s.authHandler.Login)
 			r.Post("/refresh", s.authHandler.RefreshToken)
+			r.Post("/oauth/google", s.authHandler.GoogleOAuth)
 		})
 
 		// Incoming webhook (token auth in URL)

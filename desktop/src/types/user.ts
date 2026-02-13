@@ -30,3 +30,7 @@ export interface UpdateUserRequest {
   name?: string;
   avatar_url?: string;
 }
+
+export interface GoogleOAuthRequest {
+  credential: string;
+}

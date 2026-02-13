@@ -25,10 +25,15 @@ class WebSocketService {
     }
 
     this.isIntentionallyClosed = false;
-    this.ws = new WebSocket(`${WS_BASE}/ws?token=${token}`);
+    this.ws = new WebSocket(`${WS_BASE}/ws`);
 
     this.ws.onopen = () => {
       this.reconnectAttempts = 0;
+      // Send auth as first message instead of token in URL
+      this.ws?.send(JSON.stringify({
+        type: "auth",
+        payload: { token },
+      }));
     };
 
     this.ws.onmessage = (event) => {

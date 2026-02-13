@@ -60,6 +60,9 @@ func (r *Repository) List(ctx context.Context, creatorID uuid.UUID) ([]model.Web
 		}
 		webhooks = append(webhooks, wh)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate webhooks: %w", err)
+	}
 	return webhooks, nil
 }
 

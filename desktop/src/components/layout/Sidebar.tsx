@@ -1,8 +1,9 @@
 import { useAuthStore } from "../../stores/authStore";
 import { useChannelStore } from "../../stores/channelStore";
 import ChannelList from "../channels/ChannelList";
-import CreateChannelModal from "../channels/CreateChannelModal";
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
+
+const CreateChannelModal = lazy(() => import("../channels/CreateChannelModal"));
 
 interface Props {
   onOpenChannelSwitcher: () => void;
@@ -15,7 +16,8 @@ export default function Sidebar({ onOpenChannelSwitcher }: Props) {
   return (
     <div className="flex w-60 flex-col bg-sidebar text-gray-300">
       {/* Workspace header */}
-      <div className="flex items-center justify-between border-b border-gray-700 px-4 py-3">
+      <div className="flex items-center gap-2 border-b border-gray-700 px-4 py-3">
+        <img src="/feather-logo.png" alt="Feather" className="h-7 w-7 rounded-full" />
         <h1 className="text-lg font-bold text-white">Feather</h1>
       </div>
 
@@ -62,7 +64,9 @@ export default function Sidebar({ onOpenChannelSwitcher }: Props) {
       </div>
 
       {showCreateChannel && (
-        <CreateChannelModal onClose={() => setShowCreateChannel(false)} />
+        <Suspense fallback={null}>
+          <CreateChannelModal onClose={() => setShowCreateChannel(false)} />
+        </Suspense>
       )}
     </div>
   );

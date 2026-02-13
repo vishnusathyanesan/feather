@@ -22,11 +22,11 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 
 func (r *Repository) CreateUser(ctx context.Context, user *model.User) error {
 	query := `
-		INSERT INTO users (id, email, name, password_hash, role, is_active, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO users (id, email, name, password_hash, google_id, role, is_active, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 	_, err := r.db.Exec(ctx, query,
-		user.ID, user.Email, user.Name, user.PasswordHash,
+		user.ID, user.Email, user.Name, user.PasswordHash, user.GoogleID,
 		user.Role, user.IsActive, user.CreatedAt, user.UpdatedAt,
 	)
 	if err != nil {
@@ -37,12 +37,12 @@ func (r *Repository) CreateUser(ctx context.Context, user *model.User) error {
 
 func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
 	query := `
-		SELECT id, email, name, password_hash, avatar_url, role, is_active, created_at, updated_at
+		SELECT id, email, name, password_hash, google_id, avatar_url, role, is_active, created_at, updated_at
 		FROM users WHERE email = $1
 	`
 	var user model.User
 	err := r.db.QueryRow(ctx, query, email).Scan(
-		&user.ID, &user.Email, &user.Name, &user.PasswordHash,
+		&user.ID, &user.Email, &user.Name, &user.PasswordHash, &user.GoogleID,
 		&user.AvatarURL, &user.Role, &user.IsActive, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if err == pgx.ErrNoRows {
@@ -56,12 +56,12 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*model.U
 
 func (r *Repository) GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
 	query := `
-		SELECT id, email, name, password_hash, avatar_url, role, is_active, created_at, updated_at
+		SELECT id, email, name, password_hash, google_id, avatar_url, role, is_active, created_at, updated_at
 		FROM users WHERE id = $1
 	`
 	var user model.User
 	err := r.db.QueryRow(ctx, query, id).Scan(
-		&user.ID, &user.Email, &user.Name, &user.PasswordHash,
+		&user.ID, &user.Email, &user.Name, &user.PasswordHash, &user.GoogleID,
 		&user.AvatarURL, &user.Role, &user.IsActive, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if err == pgx.ErrNoRows {
@@ -71,6 +71,34 @@ func (r *Repository) GetUserByID(ctx context.Context, id uuid.UUID) (*model.User
 		return nil, fmt.Errorf("get user by id: %w", err)
 	}
 	return &user, nil
+}
+
+func (r *Repository) GetUserByGoogleID(ctx context.Context, googleID string) (*model.User, error) {
+	query := `
+		SELECT id, email, name, password_hash, google_id, avatar_url, role, is_active, created_at, updated_at
+		FROM users WHERE google_id = $1
+	`
+	var user model.User
+	err := r.db.QueryRow(ctx, query, googleID).Scan(
+		&user.ID, &user.Email, &user.Name, &user.PasswordHash, &user.GoogleID,
+		&user.AvatarURL, &user.Role, &user.IsActive, &user.CreatedAt, &user.UpdatedAt,
+	)
+	if err == pgx.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get user by google id: %w", err)
+	}
+	return &user, nil
+}
+
+func (r *Repository) LinkGoogleID(ctx context.Context, userID uuid.UUID, googleID string) error {
+	query := `UPDATE users SET google_id = $1, updated_at = NOW() WHERE id = $2`
+	_, err := r.db.Exec(ctx, query, googleID, userID)
+	if err != nil {
+		return fmt.Errorf("link google id: %w", err)
+	}
+	return nil
 }
 
 func (r *Repository) StoreRefreshToken(ctx context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) error {

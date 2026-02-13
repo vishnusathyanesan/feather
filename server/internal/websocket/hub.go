@@ -83,10 +83,14 @@ func (h *Hub) BroadcastToChannel(channelID uuid.UUID, data []byte, excludeClient
 
 	// Also publish to Redis for cross-instance delivery
 	if h.redis != nil {
-		envelope, _ := json.Marshal(redisEnvelope{
+		envelope, err := json.Marshal(redisEnvelope{
 			InstanceID: h.instanceID,
 			Data:       data,
 		})
+		if err != nil {
+			slog.Error("failed to marshal redis envelope", "error", err)
+			return
+		}
 		h.redis.Publish(h.ctx, "feather:channel:"+channelID.String(), envelope)
 	}
 }
@@ -161,12 +165,20 @@ func (h *Hub) broadcastPresence(userID uuid.UUID, online bool) {
 		"user_id": userID,
 		"online":  online,
 	}
-	data, _ := json.Marshal(payload)
+	data, err := json.Marshal(payload)
+	if err != nil {
+		slog.Error("failed to marshal presence payload", "error", err)
+		return
+	}
 	event := model.WebSocketEvent{
 		Type:    model.EventPresenceUpdate,
 		Payload: data,
 	}
-	eventData, _ := json.Marshal(event)
+	eventData, err := json.Marshal(event)
+	if err != nil {
+		slog.Error("failed to marshal presence event", "error", err)
+		return
+	}
 
 	h.mu.RLock()
 	defer h.mu.RUnlock()

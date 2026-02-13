@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Message, CreateMessageRequest } from "../types/message";
+import type { Message, CreateMessageRequest, ReactionGroup } from "../types/message";
 import { apiFetch } from "../services/api";
 
 interface MessageState {
@@ -18,7 +18,10 @@ interface MessageState {
   removeMessage: (channelId: string, messageId: string) => void;
   addReaction: (messageId: string, emoji: string) => Promise<void>;
   removeReaction: (messageId: string, emoji: string) => Promise<void>;
+  updateReactionInPlace: (channelId: string, messageId: string, emoji: string, userId: string, added: boolean) => void;
 }
+
+const fetchingChannels = new Set<string>();
 
 export const useMessageStore = create<MessageState>((set, get) => ({
   messagesByChannel: {},
@@ -27,6 +30,10 @@ export const useMessageStore = create<MessageState>((set, get) => ({
   isLoading: false,
 
   fetchMessages: async (channelId, before) => {
+    const key = `${channelId}:${before || ""}`;
+    if (fetchingChannels.has(key)) return;
+    fetchingChannels.add(key);
+
     set({ isLoading: true });
     try {
       const params = new URLSearchParams({ limit: "50" });
@@ -53,6 +60,8 @@ export const useMessageStore = create<MessageState>((set, get) => ({
       });
     } catch {
       set({ isLoading: false });
+    } finally {
+      fetchingChannels.delete(key);
     }
   },
 
@@ -135,4 +144,45 @@ export const useMessageStore = create<MessageState>((set, get) => ({
       method: "DELETE",
     });
   },
+
+  updateReactionInPlace: (channelId, messageId, emoji, userId, added) =>
+    set((state) => {
+      const existing = state.messagesByChannel[channelId];
+      if (!existing) return state;
+
+      return {
+        messagesByChannel: {
+          ...state.messagesByChannel,
+          [channelId]: existing.map((m) => {
+            if (m.id !== messageId) return m;
+            const reactions = [...(m.reactions || [])];
+
+            if (added) {
+              const idx = reactions.findIndex((r) => r.emoji === emoji);
+              if (idx !== -1) {
+                const group = reactions[idx];
+                if (!group.users.includes(userId)) {
+                  reactions[idx] = { ...group, count: group.count + 1, users: [...group.users, userId] };
+                }
+              } else {
+                reactions.push({ emoji, count: 1, users: [userId] });
+              }
+            } else {
+              const idx = reactions.findIndex((r) => r.emoji === emoji);
+              if (idx !== -1) {
+                const group = reactions[idx];
+                const newUsers = group.users.filter((u) => u !== userId);
+                if (newUsers.length === 0) {
+                  reactions.splice(idx, 1);
+                } else {
+                  reactions[idx] = { ...group, count: newUsers.length, users: newUsers };
+                }
+              }
+            }
+
+            return { ...m, reactions };
+          }),
+        },
+      };
+    }),
 }));

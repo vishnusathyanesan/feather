@@ -81,6 +81,56 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest) (*model.Aut
 	return s.generateAuthResponse(ctx, user)
 }
 
+func (s *Service) GoogleLogin(ctx context.Context, googleID, email, name string) (*model.AuthResponse, error) {
+	// Branch 1: user found by google_id → login
+	user, err := s.repo.GetUserByGoogleID(ctx, googleID)
+	if err != nil {
+		return nil, fmt.Errorf("find user by google id: %w", err)
+	}
+	if user != nil {
+		if !user.IsActive {
+			return nil, ErrUserDeactivated
+		}
+		return s.generateAuthResponse(ctx, user)
+	}
+
+	// Branch 2: user found by email (no google_id) → link Google account
+	user, err = s.repo.GetUserByEmail(ctx, email)
+	if err != nil {
+		return nil, fmt.Errorf("find user by email: %w", err)
+	}
+	if user != nil {
+		if !user.IsActive {
+			return nil, ErrUserDeactivated
+		}
+		if err := s.repo.LinkGoogleID(ctx, user.ID, googleID); err != nil {
+			return nil, fmt.Errorf("link google id: %w", err)
+		}
+		user.GoogleID = &googleID
+		return s.generateAuthResponse(ctx, user)
+	}
+
+	// Branch 3: no user → create new user with Google info
+	now := time.Now()
+	user = &model.User{
+		ID:           uuid.New(),
+		Email:        email,
+		Name:         name,
+		PasswordHash: "",
+		GoogleID:     &googleID,
+		Role:         model.RoleMember,
+		IsActive:     true,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
+
+	if err := s.repo.CreateUser(ctx, user); err != nil {
+		return nil, fmt.Errorf("create google user: %w", err)
+	}
+
+	return s.generateAuthResponse(ctx, user)
+}
+
 func (s *Service) Refresh(ctx context.Context, rawToken string) (*model.AuthResponse, error) {
 	tokenHash := HashToken(rawToken)
 

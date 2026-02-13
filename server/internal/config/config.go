@@ -14,6 +14,7 @@ type Config struct {
 	MinIO     MinIOConfig     `mapstructure:"minio"`
 	Upload    UploadConfig    `mapstructure:"upload"`
 	RateLimit RateLimitConfig `mapstructure:"rate_limit"`
+	OAuth     OAuthConfig     `mapstructure:"oauth"`
 }
 
 type ServerConfig struct {
@@ -21,7 +22,9 @@ type ServerConfig struct {
 }
 
 type DatabaseConfig struct {
-	URL string `mapstructure:"url"`
+	URL      string `mapstructure:"url"`
+	MaxConns int32  `mapstructure:"max_conns"`
+	MinConns int32  `mapstructure:"min_conns"`
 }
 
 type RedisConfig struct {
@@ -53,6 +56,10 @@ type RateLimitConfig struct {
 	Auth            int `mapstructure:"auth"`
 }
 
+type OAuthConfig struct {
+	GoogleClientID string `mapstructure:"google_client_id"`
+}
+
 func Load() (*Config, error) {
 	v := viper.New()
 
@@ -74,8 +81,13 @@ func Load() (*Config, error) {
 	v.BindEnv("minio.secret_key", "FEATHER_MINIO_SECRET_KEY")
 	v.BindEnv("minio.use_ssl", "FEATHER_MINIO_USE_SSL")
 	v.BindEnv("minio.bucket", "FEATHER_MINIO_BUCKET")
+	v.BindEnv("database.max_conns", "FEATHER_DATABASE_MAX_CONNS")
+	v.BindEnv("database.min_conns", "FEATHER_DATABASE_MIN_CONNS")
+	v.BindEnv("oauth.google_client_id", "FEATHER_OAUTH_GOOGLE_CLIENT_ID")
 
 	// Defaults
+	v.SetDefault("database.max_conns", 25)
+	v.SetDefault("database.min_conns", 5)
 	v.SetDefault("server.port", 8080)
 	v.SetDefault("jwt.access_ttl", "15m")
 	v.SetDefault("jwt.refresh_ttl", "168h")

@@ -10,7 +10,7 @@ func CORS() cors.Options {
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Requested-With"},
 		ExposedHeaders:   []string{"X-RateLimit-Limit", "X-RateLimit-Remaining", "Retry-After"},
-		AllowCredentials: true,
+		AllowCredentials: false,
 		MaxAge:           300,
 	}
 }

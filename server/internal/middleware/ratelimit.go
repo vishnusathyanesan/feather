@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -24,6 +25,17 @@ func NewRateLimiter(redisClient *redis.Client, limit int, window time.Duration) 
 	}
 }
 
+// Lua script for atomic increment with expiry.
+// Returns the current count after increment.
+// Sets expiry only on first increment (when count becomes 1).
+var incrWithExpireScript = redis.NewScript(`
+local count = redis.call("INCR", KEYS[1])
+if count == 1 then
+    redis.call("PEXPIRE", KEYS[1], ARGV[1])
+end
+return count
+`)
+
 func (rl *RateLimiter) Limit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := rl.getKey(r)
@@ -31,8 +43,8 @@ func (rl *RateLimiter) Limit(next http.Handler) http.Handler {
 
 		count, err := rl.increment(ctx, key)
 		if err != nil {
-			// If Redis is down, allow the request
-			next.ServeHTTP(w, r)
+			// If Redis is down, reject the request (fail closed)
+			http.Error(w, `{"error":"service unavailable"}`, http.StatusServiceUnavailable)
 			return
 		}
 
@@ -51,19 +63,17 @@ func (rl *RateLimiter) Limit(next http.Handler) http.Handler {
 
 func (rl *RateLimiter) getKey(r *http.Request) string {
 	// Use user ID if authenticated, otherwise IP
-	if userID := GetUserID(r.Context()); userID.String() != "00000000-0000-0000-0000-000000000000" {
+	if userID := GetUserID(r.Context()); userID != uuid.Nil {
 		return fmt.Sprintf("ratelimit:%s", userID.String())
 	}
 	return fmt.Sprintf("ratelimit:%s", r.RemoteAddr)
 }
 
 func (rl *RateLimiter) increment(ctx context.Context, key string) (int64, error) {
-	pipe := rl.redis.Pipeline()
-	incr := pipe.Incr(ctx, key)
-	pipe.Expire(ctx, key, rl.window)
-	_, err := pipe.Exec(ctx)
+	windowMs := rl.window.Milliseconds()
+	result, err := incrWithExpireScript.Run(ctx, rl.redis, []string{key}, windowMs).Int64()
 	if err != nil {
 		return 0, err
 	}
-	return incr.Val(), nil
+	return result, nil
 }

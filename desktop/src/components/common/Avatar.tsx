@@ -24,11 +24,13 @@ function getColor(name: string) {
 }
 
 export default function Avatar({ name, url, size = "md" }: Props) {
+  const displayName = name || "?";
+
   if (url) {
     return (
       <img
         src={url}
-        alt={name}
+        alt={displayName}
         className={`${sizeMap[size]} rounded object-cover`}
       />
     );
@@ -36,9 +38,9 @@ export default function Avatar({ name, url, size = "md" }: Props) {
 
   return (
     <div
-      className={`${sizeMap[size]} ${getColor(name)} flex items-center justify-center rounded font-bold text-white`}
+      className={`${sizeMap[size]} ${getColor(displayName)} flex items-center justify-center rounded font-bold text-white`}
     >
-      {name.charAt(0).toUpperCase()}
+      {displayName.charAt(0).toUpperCase()}
     </div>
   );
 }

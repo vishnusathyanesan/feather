@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useAuthStore } from "../stores/authStore";
 import type { RegisterRequest } from "../types/user";
+import GoogleSignInButton from "../components/auth/GoogleSignInButton";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -26,6 +27,10 @@ export default function RegisterPage() {
   return (
     <div className="flex h-full items-center justify-center bg-surface">
       <div className="w-full max-w-sm p-8">
+        <div className="mb-6 flex justify-center">
+          <img src="/feather-logo.png" alt="Feather" className="h-16 w-16 rounded-full" />
+        </div>
+
         <h1 className="mb-8 text-center text-2xl font-bold text-gray-900 dark:text-gray-100">
           Create Account
         </h1>
@@ -35,6 +40,8 @@ export default function RegisterPage() {
             {error}
           </div>
         )}
+
+        <GoogleSignInButton />
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>

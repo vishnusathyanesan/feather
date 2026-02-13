@@ -47,6 +47,8 @@ export const usePresenceStore = create<PresenceState>((set, get) => ({
   clearTyping: (channelId, userId) =>
     set((state) => {
       const key = `${channelId}:${userId}`;
+      const existing = state.typingUsers[key];
+      if (existing) clearTimeout(existing.timeout);
       const { [key]: _, ...rest } = state.typingUsers;
       return { typingUsers: rest };
     }),

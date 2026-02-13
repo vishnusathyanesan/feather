@@ -109,6 +109,9 @@ func (r *Repository) List(ctx context.Context, userID uuid.UUID) ([]model.Channe
 		}
 		channels = append(channels, ch)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate channels: %w", err)
+	}
 	return channels, nil
 }
 
@@ -192,6 +195,9 @@ func (r *Repository) GetMembers(ctx context.Context, channelID uuid.UUID) ([]mod
 		}
 		m.User = &u
 		members = append(members, m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate members: %w", err)
 	}
 	return members, nil
 }

@@ -114,7 +114,7 @@ func (s *Server) initServices(fileStorage *file.Storage) {
 	webhookService := webhook.NewService(webhookRepo, uuid.Nil, nil)
 
 	// Handlers
-	s.authHandler = auth.NewHandler(authService, s.validate, s.channelService)
+	s.authHandler = auth.NewHandler(authService, s.validate, s.channelService, s.cfg.OAuth.GoogleClientID)
 	s.channelHandler = channel.NewHandler(s.channelService, s.validate)
 	s.messageHandler = message.NewHandler(messageService, s.validate)
 	s.reactionHandler = reaction.NewHandler(reactionService, s.validate)

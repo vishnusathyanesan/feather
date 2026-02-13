@@ -2,8 +2,10 @@ package websocket
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -28,43 +30,51 @@ func NewHandler(hub *Hub, jwtSecret string, channels ChannelLister) *WSHandler {
 	}
 }
 
+// authMessage is the expected first message from the client.
+type authMessage struct {
+	Type    string          `json:"type"`
+	Payload json.RawMessage `json:"payload"`
+}
+
+type authPayload struct {
+	Token string `json:"token"`
+}
+
 func (h *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	tokenStr := r.URL.Query().Get("token")
-	if tokenStr == "" {
-		http.Error(w, "missing token", http.StatusUnauthorized)
-		return
-	}
-
-	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, jwt.ErrSignatureInvalid
-		}
-		return []byte(h.jwtSecret), nil
-	})
-	if err != nil || !token.Valid {
-		http.Error(w, "invalid token", http.StatusUnauthorized)
-		return
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		http.Error(w, "invalid claims", http.StatusUnauthorized)
-		return
-	}
-
-	userID, err := uuid.Parse(claims["sub"].(string))
-	if err != nil {
-		http.Error(w, "invalid user id", http.StatusUnauthorized)
-		return
-	}
-
-	userName, _ := claims["name"].(string)
-
 	conn, err := ws.Accept(w, r, &ws.AcceptOptions{
 		InsecureSkipVerify: true,
 	})
 	if err != nil {
 		slog.Error("websocket accept error", "error", err)
+		return
+	}
+
+	// Wait for auth message (first message must be auth within 10s)
+	authCtx, authCancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer authCancel()
+
+	_, data, err := conn.Read(authCtx)
+	if err != nil {
+		conn.Close(ws.StatusPolicyViolation, "auth timeout")
+		return
+	}
+
+	var msg authMessage
+	if err := json.Unmarshal(data, &msg); err != nil || msg.Type != "auth" {
+		conn.Close(ws.StatusPolicyViolation, "first message must be auth")
+		return
+	}
+
+	var payload authPayload
+	if err := json.Unmarshal(msg.Payload, &payload); err != nil || payload.Token == "" {
+		conn.Close(ws.StatusPolicyViolation, "missing token")
+		return
+	}
+
+	// Validate JWT
+	userID, userName, err := h.validateToken(payload.Token)
+	if err != nil {
+		conn.Close(ws.StatusPolicyViolation, "invalid token")
 		return
 	}
 
@@ -84,4 +94,34 @@ func (h *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	go client.WritePump()
 	go client.ReadPump()
+}
+
+func (h *WSHandler) validateToken(tokenStr string) (uuid.UUID, string, error) {
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
+		return []byte(h.jwtSecret), nil
+	})
+	if err != nil || !token.Valid {
+		return uuid.Nil, "", err
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return uuid.Nil, "", jwt.ErrTokenInvalidClaims
+	}
+
+	sub, ok := claims["sub"].(string)
+	if !ok || sub == "" {
+		return uuid.Nil, "", jwt.ErrTokenInvalidClaims
+	}
+
+	userID, err := uuid.Parse(sub)
+	if err != nil {
+		return uuid.Nil, "", err
+	}
+
+	userName, _ := claims["name"].(string)
+	return userID, userName, nil
 }

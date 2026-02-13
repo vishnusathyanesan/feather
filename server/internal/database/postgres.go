@@ -7,14 +7,18 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func NewPostgresPool(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
+func NewPostgresPool(ctx context.Context, databaseURL string, maxConns, minConns int32) (*pgxpool.Pool, error) {
 	config, err := pgxpool.ParseConfig(databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse database url: %w", err)
 	}
 
-	config.MaxConns = 25
-	config.MinConns = 5
+	if maxConns > 0 {
+		config.MaxConns = maxConns
+	}
+	if minConns > 0 {
+		config.MinConns = minConns
+	}
 
 	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {

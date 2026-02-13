@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { User, LoginRequest, RegisterRequest, AuthResponse } from "../types/user";
+import type { User, LoginRequest, RegisterRequest, AuthResponse, GoogleOAuthRequest } from "../types/user";
 import { apiFetch, setTokens, clearTokens, setAuthFailureHandler } from "../services/api";
 
 interface AuthState {
@@ -10,6 +10,7 @@ interface AuthState {
 
   login: (req: LoginRequest) => Promise<void>;
   register: (req: RegisterRequest) => Promise<void>;
+  loginWithGoogle: (credential: string) => Promise<void>;
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
   setUser: (user: User) => void;
@@ -51,6 +52,22 @@ export const useAuthStore = create<AuthState>((set, get) => {
         const res = await apiFetch<AuthResponse>("/auth/register", {
           method: "POST",
           body: JSON.stringify(req),
+        });
+        setTokens(res.access_token, res.refresh_token);
+        localStorage.setItem("feather_refresh_token", res.refresh_token);
+        set({ user: res.user, isAuthenticated: true, isLoading: false });
+      } catch (err) {
+        set({ error: (err as Error).message, isLoading: false });
+        throw err;
+      }
+    },
+
+    loginWithGoogle: async (credential) => {
+      try {
+        set({ isLoading: true, error: null });
+        const res = await apiFetch<AuthResponse>("/auth/oauth/google", {
+          method: "POST",
+          body: JSON.stringify({ credential } satisfies GoogleOAuthRequest),
         });
         setTokens(res.access_token, res.refresh_token);
         localStorage.setItem("feather_refresh_token", res.refresh_token);

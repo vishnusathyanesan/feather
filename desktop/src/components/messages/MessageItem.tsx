@@ -14,7 +14,7 @@ interface Props {
 
 function MessageItemInner({ message, onOpenThread }: Props) {
   const { user: currentUser } = useAuthStore();
-  const { editMessage, deleteMessage, addReaction } = useMessageStore();
+  const { editMessage, deleteMessage, addReaction, removeReaction } = useMessageStore();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [showActions, setShowActions] = useState(false);
@@ -105,16 +105,19 @@ function MessageItemInner({ message, onOpenThread }: Props) {
         {/* Reactions */}
         {message.reactions && message.reactions.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
-            {message.reactions.map((r) => (
-              <button
-                key={r.emoji}
-                onClick={() => addReaction(message.id, r.emoji)}
-                className="flex items-center rounded-full border border-gray-200 px-2 py-0.5 text-xs hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700"
-              >
-                <span>{r.emoji}</span>
-                <span className="ml-1 text-gray-500">{r.count}</span>
-              </button>
-            ))}
+            {message.reactions.map((r) => {
+              const hasReacted = currentUser ? r.users.includes(currentUser.id) : false;
+              return (
+                <button
+                  key={r.emoji}
+                  onClick={() => hasReacted ? removeReaction(message.id, r.emoji) : addReaction(message.id, r.emoji)}
+                  className={`flex items-center rounded-full border px-2 py-0.5 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 ${hasReacted ? "border-blue-400 bg-blue-50 dark:border-blue-500 dark:bg-blue-900/30" : "border-gray-200 dark:border-gray-600"}`}
+                >
+                  <span>{r.emoji}</span>
+                  <span className="ml-1 text-gray-500">{r.count}</span>
+                </button>
+              );
+            })}
           </div>
         )}
 

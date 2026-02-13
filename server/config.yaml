@@ -3,6 +3,8 @@ server:
 
 database:
   url: "postgres://feather:feather@localhost:5432/feather?sslmode=disable"
+  max_conns: 25
+  min_conns: 5
 
 redis:
   url: "redis://localhost:6379/0"
@@ -27,3 +29,6 @@ rate_limit:
   authenticated: 300
   webhooks: 60
   auth: 10
+
+oauth:
+  google_client_id: ""

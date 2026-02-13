@@ -58,7 +58,13 @@ func Auth(jwtSecret string) func(http.Handler) http.Handler {
 				return
 			}
 
-			userID, err := uuid.Parse(claims["sub"].(string))
+			sub, ok := claims["sub"].(string)
+		if !ok || sub == "" {
+			http.Error(w, `{"error":"invalid token claims"}`, http.StatusUnauthorized)
+			return
+		}
+
+		userID, err := uuid.Parse(sub)
 			if err != nil {
 				http.Error(w, `{"error":"invalid user id in token"}`, http.StatusUnauthorized)
 				return

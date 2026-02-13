@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMessageStore } from "../../stores/messageStore";
 import MessageItem from "./MessageItem";
 import MessageInput from "./MessageInput";
@@ -11,9 +11,11 @@ interface Props {
 export default function ThreadPanel({ parentId, onClose }: Props) {
   const { threadMessages, fetchThread } = useMessageStore();
   const messages = threadMessages[parentId] || [];
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    fetchThread(parentId);
+    setIsLoading(true);
+    fetchThread(parentId).finally(() => setIsLoading(false));
   }, [parentId, fetchThread]);
 
   const parent = messages[0];
@@ -31,13 +33,19 @@ export default function ThreadPanel({ parentId, onClose }: Props) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-2">
-        {messages.map((msg) => (
-          <MessageItem
-            key={msg.id}
-            message={msg}
-            onOpenThread={() => {}}
-          />
-        ))}
+        {isLoading && messages.length === 0 ? (
+          <div className="flex h-full items-center justify-center text-sm text-gray-500">
+            Loading thread...
+          </div>
+        ) : (
+          messages.map((msg) => (
+            <MessageItem
+              key={msg.id}
+              message={msg}
+              onOpenThread={() => {}}
+            />
+          ))
+        )}
       </div>
 
       {parent && (

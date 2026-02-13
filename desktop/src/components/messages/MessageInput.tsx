@@ -10,6 +10,7 @@ interface Props {
 
 export default function MessageInput({ channelId, parentId, placeholder }: Props) {
   const [content, setContent] = useState("");
+  const [sendError, setSendError] = useState(false);
   const { sendMessage } = useMessageStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lastTypingSent = useRef(0);
@@ -18,6 +19,7 @@ export default function MessageInput({ channelId, parentId, placeholder }: Props
     const trimmed = content.trim();
     if (!trimmed) return;
 
+    setSendError(false);
     try {
       await sendMessage(channelId, {
         content: trimmed,
@@ -28,7 +30,7 @@ export default function MessageInput({ channelId, parentId, placeholder }: Props
         textareaRef.current.style.height = "auto";
       }
     } catch {
-      // Handle error
+      setSendError(true);
     }
   }, [content, channelId, parentId, sendMessage]);
 
@@ -57,6 +59,9 @@ export default function MessageInput({ channelId, parentId, placeholder }: Props
 
   return (
     <div className="border-t border-gray-200 px-4 py-3 dark:border-gray-700">
+      {sendError && (
+        <div className="mb-2 text-xs text-red-500">Failed to send message. Please try again.</div>
+      )}
       <div className="flex items-end rounded border border-gray-300 bg-white dark:border-gray-600 dark:bg-surface-secondary">
         <textarea
           ref={textareaRef}
