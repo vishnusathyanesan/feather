@@ -9,7 +9,7 @@ set -euo pipefail
 
 DOMAIN="${1:?Usage: $0 <domain>}"
 API_URL="https://${DOMAIN}/api/v1"
-WS_URL="wss://${DOMAIN}/api/v1/ws"
+WS_URL="wss://${DOMAIN}/api/v1"
 GOOGLE_CLIENT_ID="${VITE_GOOGLE_CLIENT_ID:-${2:-}}"
 
 echo "Building frontend for ${DOMAIN}..."

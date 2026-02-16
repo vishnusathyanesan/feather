@@ -52,7 +52,7 @@ jobs:
       - name: Build
         env:
           VITE_API_URL: https://${{ env.DOMAIN }}/api/v1
-          VITE_WS_URL: wss://${{ env.DOMAIN }}/api/v1/ws
+          VITE_WS_URL: wss://${{ env.DOMAIN }}/api/v1
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
         run: cd desktop && npm run build
 
