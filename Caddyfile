@@ -1,5 +1,25 @@
-{$DOMAIN:localhost} {
-	reverse_proxy api:8080
+{$DOMAIN} {
+	# API and WebSocket
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+
+	# WebSocket needs special handling for upgrades
+	@websocket {
+		path /api/v1/ws
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	handle @websocket {
+		reverse_proxy api:8080
+	}
+
+	# Serve frontend static files, fallback to index.html for SPA routing
+	handle {
+		root * /srv/frontend
+		try_files {path} /index.html
+		file_server
+	}
 
 	encode gzip
 
@@ -8,8 +28,7 @@
 		X-Frame-Options DENY
 		Referrer-Policy strict-origin-when-cross-origin
 		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		Permissions-Policy "geolocation=(), microphone=(self), camera=(self)"
 		X-Permitted-Cross-Domain-Policies none
-		Content-Security-Policy "default-src 'self'; script-src 'self' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; frame-src https://accounts.google.com; connect-src 'self' wss: ws:; img-src 'self' data: https:; font-src 'self'"
 	}
 }
