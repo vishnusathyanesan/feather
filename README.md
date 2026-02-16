@@ -158,6 +158,45 @@ Your app will be live at `https://your-app.duckdns.org` once Caddy obtains the T
 
 The remaining ~400 MB is covered by 2 GB swap for peak loads.
 
+## CI/CD (Automated Deployment)
+
+Push to `main` triggers a GitHub Actions workflow that:
+
+1. Builds the Go API Docker image on GitHub runners (~2 min vs 33 min on e2-micro)
+2. Pushes it to GitHub Container Registry (GHCR)
+3. Builds the frontend with production URLs
+4. SSHs into the VM, pulls the new image, and restarts
+
+### Setup
+
+Add these GitHub repository secrets (`Settings > Secrets > Actions`):
+
+| Secret | Value |
+|--------|-------|
+| `VM_HOST` | VM's external IP (find with `gcloud compute instances describe feather-server --zone=us-central1-a --format='get(networkInterfaces[0].accessConfigs[0].natIP)'`) |
+| `VM_USER` | SSH username (e.g., `sathuvish`) |
+| `VM_SSH_KEY` | Private SSH key for the VM |
+| `GHCR_TOKEN` | GitHub PAT with `read:packages` scope |
+
+Generate an SSH key for deployment:
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/feather-deploy -N ""
+# Add public key to VM
+gcloud compute ssh feather-server --zone=us-central1-a --command="echo '$(cat ~/.ssh/feather-deploy.pub)' >> ~/.ssh/authorized_keys"
+# Copy private key as VM_SSH_KEY secret
+cat ~/.ssh/feather-deploy
+```
+
+### Manual Deploy
+
+```bash
+# Deploy using pre-built GHCR image (fast)
+./deploy/deploy.sh
+
+# Or build on VM (slow, no GHCR needed)
+./deploy/deploy.sh --build
+```
+
 ## Configuration
 
 Configuration is via `server/config.yaml` with environment variable overrides using the `FEATHER_` prefix:
