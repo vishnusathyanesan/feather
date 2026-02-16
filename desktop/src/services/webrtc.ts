@@ -5,10 +5,15 @@ import { useCallStore } from "../stores/callStore";
 
 let peerConnection: RTCPeerConnection | null = null;
 let rtcConfig: RTCConfig | null = null;
+let rtcConfigFetchedAt = 0;
+const RTC_CONFIG_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 export async function fetchRTCConfig(): Promise<RTCConfig> {
-  if (rtcConfig) return rtcConfig;
+  if (rtcConfig && Date.now() - rtcConfigFetchedAt < RTC_CONFIG_TTL_MS) {
+    return rtcConfig;
+  }
   rtcConfig = await apiFetch<RTCConfig>("/rtc/config");
+  rtcConfigFetchedAt = Date.now();
   return rtcConfig;
 }
 

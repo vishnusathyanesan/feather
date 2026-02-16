@@ -30,8 +30,8 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*model.User, error
 	return user, nil
 }
 
-func (s *Service) List(ctx context.Context) ([]model.User, error) {
-	return s.repo.List(ctx)
+func (s *Service) List(ctx context.Context, search string) ([]model.User, error) {
+	return s.repo.List(ctx, search)
 }
 
 func (s *Service) Update(ctx context.Context, id uuid.UUID, req model.UpdateUserRequest) (*model.User, error) {

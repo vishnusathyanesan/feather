@@ -57,9 +57,16 @@ func (r *Repository) GetByName(ctx context.Context, name string) (*model.UserGro
 	return &g, nil
 }
 
-func (r *Repository) List(ctx context.Context) ([]model.UserGroup, error) {
-	query := `SELECT id, name, description, creator_id, created_at, updated_at FROM user_groups ORDER BY name ASC`
-	rows, err := r.db.Query(ctx, query)
+func (r *Repository) List(ctx context.Context, search string) ([]model.UserGroup, error) {
+	query := `SELECT id, name, description, creator_id, created_at, updated_at FROM user_groups`
+	var args []interface{}
+	if search != "" {
+		query += ` WHERE LOWER(name) LIKE LOWER($1)`
+		args = append(args, "%"+search+"%")
+	}
+	query += ` ORDER BY name ASC`
+
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list user groups: %w", err)
 	}

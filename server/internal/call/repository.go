@@ -142,6 +142,18 @@ func (r *Repository) GetActiveCallForChannel(ctx context.Context, channelID uuid
 	return &c, nil
 }
 
+// ExpireStaleRingingCalls marks all ringing calls older than the given cutoff as missed.
+func (r *Repository) ExpireStaleRingingCalls(ctx context.Context, cutoff time.Time) (int64, error) {
+	tag, err := r.db.Exec(ctx,
+		`UPDATE calls SET status = 'missed', ended_at = NOW() WHERE status = 'ringing' AND created_at < $1`,
+		cutoff,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("expire stale ringing calls: %w", err)
+	}
+	return tag.RowsAffected(), nil
+}
+
 func (r *Repository) ListByChannel(ctx context.Context, channelID uuid.UUID, limit int) ([]model.Call, error) {
 	if limit <= 0 {
 		limit = 20

@@ -23,7 +23,8 @@ func NewHandler(service *Service, validate *validator.Validate) *Handler {
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	users, err := h.service.List(r.Context())
+	search := r.URL.Query().Get("q")
+	users, err := h.service.List(r.Context(), search)
 	if err != nil {
 		writeError(w, "internal server error", http.StatusInternalServerError)
 		return

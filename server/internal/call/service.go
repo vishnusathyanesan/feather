@@ -181,6 +181,20 @@ func (s *Service) ListByChannel(ctx context.Context, channelID uuid.UUID) ([]mod
 	return s.repo.ListByChannel(ctx, channelID, 20)
 }
 
+// RecoverStaleCalls marks any ringing calls older than the ringing timeout as missed.
+// Should be called on server startup to clean up calls left in ringing state from a prior crash.
+func (s *Service) RecoverStaleCalls(ctx context.Context) {
+	cutoff := time.Now().Add(-ringingTimeout)
+	count, err := s.repo.ExpireStaleRingingCalls(ctx, cutoff)
+	if err != nil {
+		slog.Error("failed to recover stale ringing calls", "error", err)
+		return
+	}
+	if count > 0 {
+		slog.Info("recovered stale ringing calls", "count", count)
+	}
+}
+
 func (s *Service) broadcastCallEvent(eventType model.EventType, c *model.Call) {
 	if s.broadcast == nil {
 		return

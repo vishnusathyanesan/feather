@@ -244,6 +244,9 @@ func (s *Server) Start() error {
 		slog.Warn("failed to seed default channel", "error", err)
 	}
 
+	// Recover any calls stuck in ringing state from a prior shutdown
+	s.callService.RecoverStaleCalls(ctx)
+
 	slog.Info("server starting", "port", s.cfg.Server.Port)
 	return s.httpServer.ListenAndServe()
 }

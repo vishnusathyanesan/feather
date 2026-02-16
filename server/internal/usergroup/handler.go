@@ -49,7 +49,8 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	groups, err := h.service.List(r.Context())
+	search := r.URL.Query().Get("q")
+	groups, err := h.service.List(r.Context(), search)
 	if err != nil {
 		writeError(w, "internal server error", http.StatusInternalServerError)
 		return

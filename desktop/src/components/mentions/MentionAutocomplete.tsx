@@ -57,21 +57,18 @@ export default function MentionAutocomplete({
 
       try {
         abortRef.current = new AbortController();
+        const params = `?q=${encodeURIComponent(q)}`;
         const [users, groups] = await Promise.all([
-          apiFetch<User[]>("/users", { signal: abortRef.current.signal }),
-          apiFetch<UserGroup[]>("/groups", { signal: abortRef.current.signal }),
+          apiFetch<User[]>(`/users${params}`, { signal: abortRef.current.signal }),
+          apiFetch<UserGroup[]>(`/groups${params}`, { signal: abortRef.current.signal }),
         ]);
 
         for (const u of users || []) {
-          if (u.name.toLowerCase().includes(q)) {
-            results.push({ type: "user", user: u });
-          }
+          results.push({ type: "user", user: u });
         }
 
         for (const g of groups || []) {
-          if (g.name.toLowerCase().includes(q)) {
-            results.push({ type: "group", group: g });
-          }
+          results.push({ type: "group", group: g });
         }
       } catch {
         // ignore fetch errors and aborts

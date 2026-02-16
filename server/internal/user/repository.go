@@ -38,13 +38,19 @@ func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (*model.User, er
 	return &user, nil
 }
 
-func (r *Repository) List(ctx context.Context) ([]model.User, error) {
+func (r *Repository) List(ctx context.Context, search string) ([]model.User, error) {
 	query := `
 		SELECT id, email, name, '', NULL::varchar, avatar_url, role, is_active, created_at, updated_at
 		FROM users WHERE is_active = true
-		ORDER BY name ASC
 	`
-	rows, err := r.db.Query(ctx, query)
+	var args []interface{}
+	if search != "" {
+		query += ` AND LOWER(name) LIKE LOWER($1)`
+		args = append(args, "%"+search+"%")
+	}
+	query += ` ORDER BY name ASC`
+
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list users: %w", err)
 	}
