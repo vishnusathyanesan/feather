@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { useMessageStore } from "../../stores/messageStore";
 import { wsService } from "../../services/websocket";
+import MentionAutocomplete from "../mentions/MentionAutocomplete";
 
 interface Props {
   channelId: string;
@@ -11,6 +12,8 @@ interface Props {
 export default function MessageInput({ channelId, parentId, placeholder }: Props) {
   const [content, setContent] = useState("");
   const [sendError, setSendError] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [showMentions, setShowMentions] = useState(false);
   const { sendMessage } = useMessageStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lastTypingSent = useRef(0);
@@ -35,6 +38,7 @@ export default function MessageInput({ channelId, parentId, placeholder }: Props
   }, [content, channelId, parentId, sendMessage]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (showMentions) return; // Let autocomplete handle keys
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -42,12 +46,25 @@ export default function MessageInput({ channelId, parentId, placeholder }: Props
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setContent(e.target.value);
+    const value = e.target.value;
+    setContent(value);
 
     // Auto-grow textarea
     const el = e.target;
     el.style.height = "auto";
     el.style.height = Math.min(el.scrollHeight, 200) + "px";
+
+    // Check for @mention trigger
+    const cursorPos = el.selectionStart;
+    const textBeforeCursor = value.substring(0, cursorPos);
+    const atMatch = textBeforeCursor.match(/@(\w*)$/);
+    if (atMatch) {
+      setMentionQuery(atMatch[1]);
+      setShowMentions(true);
+    } else {
+      setShowMentions(false);
+      setMentionQuery("");
+    }
 
     // Debounced typing indicator
     const now = Date.now();
@@ -57,12 +74,41 @@ export default function MessageInput({ channelId, parentId, placeholder }: Props
     }
   };
 
+  const handleMentionSelect = (name: string) => {
+    const cursorPos = textareaRef.current?.selectionStart ?? content.length;
+    const textBeforeCursor = content.substring(0, cursorPos);
+    const atIndex = textBeforeCursor.lastIndexOf("@");
+    if (atIndex === -1) return;
+
+    const before = content.substring(0, atIndex);
+    const after = content.substring(cursorPos);
+    const newContent = `${before}@${name} ${after}`;
+    setContent(newContent);
+    setShowMentions(false);
+    setMentionQuery("");
+
+    // Restore focus
+    setTimeout(() => {
+      if (textareaRef.current) {
+        const newPos = atIndex + name.length + 2;
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(newPos, newPos);
+      }
+    }, 0);
+  };
+
   return (
     <div className="border-t border-gray-200 px-4 py-3 dark:border-gray-700">
       {sendError && (
         <div className="mb-2 text-xs text-red-500">Failed to send message. Please try again.</div>
       )}
-      <div className="flex items-end rounded border border-gray-300 bg-white dark:border-gray-600 dark:bg-surface-secondary">
+      <div className="relative flex items-end rounded border border-gray-300 bg-white dark:border-gray-600 dark:bg-surface-secondary">
+        <MentionAutocomplete
+          query={mentionQuery}
+          onSelect={handleMentionSelect}
+          onClose={() => setShowMentions(false)}
+          visible={showMentions}
+        />
         <textarea
           ref={textareaRef}
           value={content}

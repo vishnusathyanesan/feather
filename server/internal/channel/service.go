@@ -41,9 +41,10 @@ func (s *Service) Create(ctx context.Context, req model.CreateChannelRequest, us
 	}
 
 	now := time.Now()
+	name := req.Name
 	ch := &model.Channel{
 		ID:          uuid.New(),
-		Name:        req.Name,
+		Name:        &name,
 		Topic:       req.Topic,
 		Description: req.Description,
 		Type:        req.Type,
@@ -116,7 +117,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, req model.UpdateChan
 		if existing != nil && existing.ID != id {
 			return nil, ErrNameTaken
 		}
-		ch.Name = *req.Name
+		ch.Name = req.Name
 	}
 	if req.Topic != nil {
 		ch.Topic = *req.Topic
@@ -160,7 +161,7 @@ func (s *Service) Join(ctx context.Context, channelID, userID uuid.UUID) error {
 		return ErrChannelNotFound
 	}
 
-	if ch.Type == model.ChannelPrivate {
+	if ch.Type == model.ChannelPrivate || ch.Type == model.ChannelDM || ch.Type == model.ChannelGroupDM {
 		return ErrForbidden
 	}
 
@@ -232,9 +233,10 @@ func (s *Service) SeedDefaultChannel(ctx context.Context) (*model.Channel, error
 	}
 
 	now := time.Now()
+	generalName := "general"
 	ch := &model.Channel{
 		ID:          uuid.New(),
-		Name:        "general",
+		Name:        &generalName,
 		Topic:       "General discussion",
 		Description: "Default channel for everyone",
 		Type:        model.ChannelPublic,

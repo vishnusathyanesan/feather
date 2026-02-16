@@ -15,10 +15,24 @@ type Config struct {
 	Upload    UploadConfig    `mapstructure:"upload"`
 	RateLimit RateLimitConfig `mapstructure:"rate_limit"`
 	OAuth     OAuthConfig     `mapstructure:"oauth"`
+	WebRTC    WebRTCConfig    `mapstructure:"webrtc"`
 }
 
 type ServerConfig struct {
-	Port int `mapstructure:"port"`
+	Port   int    `mapstructure:"port"`
+	AppURL string `mapstructure:"app_url"`
+}
+
+type WebRTCConfig struct {
+	Enabled     bool         `mapstructure:"enabled"`
+	STUNServers []string     `mapstructure:"stun_servers"`
+	TURNServers []TURNServer `mapstructure:"turn_servers"`
+}
+
+type TURNServer struct {
+	URL        string `mapstructure:"url"`
+	Username   string `mapstructure:"username"`
+	Credential string `mapstructure:"credential"`
 }
 
 type DatabaseConfig struct {
@@ -96,6 +110,8 @@ func Load() (*Config, error) {
 	v.SetDefault("rate_limit.authenticated", 300)
 	v.SetDefault("rate_limit.webhooks", 60)
 	v.SetDefault("rate_limit.auth", 10)
+	v.SetDefault("webrtc.enabled", true)
+	v.SetDefault("webrtc.stun_servers", []string{"stun:stun.l.google.com:19302"})
 
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {

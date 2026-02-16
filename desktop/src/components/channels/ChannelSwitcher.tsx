@@ -13,7 +13,7 @@ export default function ChannelSwitcher({ onClose }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const filtered = channels.filter((ch) =>
-    ch.name.toLowerCase().includes(query.toLowerCase())
+    (ch.name || "").toLowerCase().includes(query.toLowerCase())
   );
 
   useEffect(() => {

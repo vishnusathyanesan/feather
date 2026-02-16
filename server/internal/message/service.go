@@ -24,10 +24,16 @@ type ChannelChecker interface {
 
 type BroadcastFunc func(channelID uuid.UUID, event model.WebSocketEvent)
 
+// MentionProcessor processes mentions in a message after creation.
+type MentionProcessor interface {
+	ProcessMentions(ctx context.Context, msg *model.Message)
+}
+
 type Service struct {
-	repo      *Repository
-	channels  ChannelChecker
-	broadcast BroadcastFunc
+	repo             *Repository
+	channels         ChannelChecker
+	broadcast        BroadcastFunc
+	mentionProcessor MentionProcessor
 }
 
 func NewService(repo *Repository, channels ChannelChecker, broadcast BroadcastFunc) *Service {
@@ -36,6 +42,11 @@ func NewService(repo *Repository, channels ChannelChecker, broadcast BroadcastFu
 		channels:  channels,
 		broadcast: broadcast,
 	}
+}
+
+// SetMentionProcessor sets the mention processor (called after service initialization to break circular deps).
+func (s *Service) SetMentionProcessor(mp MentionProcessor) {
+	s.mentionProcessor = mp
 }
 
 func (s *Service) Create(ctx context.Context, channelID uuid.UUID, req model.CreateMessageRequest, userID uuid.UUID, userRole string) (*model.Message, error) {
@@ -74,6 +85,11 @@ func (s *Service) Create(ctx context.Context, channelID uuid.UUID, req model.Cre
 
 	if s.broadcast != nil {
 		s.broadcastMessage(model.EventMessageNew, full)
+	}
+
+	// Process mentions asynchronously
+	if s.mentionProcessor != nil {
+		go s.mentionProcessor.ProcessMentions(context.Background(), full)
 	}
 
 	return full, nil

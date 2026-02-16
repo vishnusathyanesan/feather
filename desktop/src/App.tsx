@@ -1,6 +1,6 @@
 import { useEffect, Component } from "react";
 import type { ReactNode, ErrorInfo } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useParams } from "react-router-dom";
 import { useAuthStore } from "./stores/authStore";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -61,6 +61,12 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+// Redirect /invite/:token to /register?invite=:token
+function InviteRedirect() {
+  const { token } = useParams<{ token: string }>();
+  return <Navigate to={`/register?invite=${token}`} replace />;
+}
+
 export default function App() {
   const { loadUser } = useAuthStore();
 
@@ -73,6 +79,7 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/invite/:token" element={<InviteRedirect />} />
         <Route
           path="/*"
           element={

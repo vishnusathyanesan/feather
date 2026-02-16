@@ -12,15 +12,24 @@ import (
 	"github.com/feather-chat/feather/internal/model"
 )
 
+// CallHandlerFunc handles call-related WebSocket events from clients.
+type CallHandlerFunc func(userID uuid.UUID, event model.WebSocketEvent)
+
 type Hub struct {
-	instanceID string
-	clients    map[uuid.UUID]*Client
-	mu         sync.RWMutex
-	register   chan *Client
-	unregister chan *Client
-	redis      *redis.Client
-	ctx        context.Context
-	cancel     context.CancelFunc
+	instanceID  string
+	clients     map[uuid.UUID]*Client
+	mu          sync.RWMutex
+	register    chan *Client
+	unregister  chan *Client
+	redis       *redis.Client
+	ctx         context.Context
+	cancel      context.CancelFunc
+	callHandler CallHandlerFunc
+}
+
+// SetCallHandler sets the handler for call signaling events.
+func (h *Hub) SetCallHandler(fn CallHandlerFunc) {
+	h.callHandler = fn
 }
 
 type redisEnvelope struct {
@@ -204,4 +213,31 @@ func (h *Hub) GetOnlineUsers() []uuid.UUID {
 		}
 	}
 	return users
+}
+
+// SendToUser sends data to all connected clients of a specific user.
+func (h *Hub) SendToUser(userID uuid.UUID, data []byte) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	for _, client := range h.clients {
+		if client.UserID == userID {
+			select {
+			case client.send <- data:
+			default:
+			}
+		}
+	}
+}
+
+// SubscribeUserToChannel subscribes all connected clients of a user to a channel.
+func (h *Hub) SubscribeUserToChannel(userID uuid.UUID, channelID uuid.UUID) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	for _, client := range h.clients {
+		if client.UserID == userID {
+			client.SubscribeChannel(channelID)
+		}
+	}
 }

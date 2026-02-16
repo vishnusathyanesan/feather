@@ -19,15 +19,24 @@ type AutoJoiner interface {
 	AutoJoinUser(ctx context.Context, userID uuid.UUID) error
 }
 
+type InvitationAcceptor interface {
+	Accept(ctx context.Context, token string, userID uuid.UUID) error
+}
+
 type Handler struct {
-	service        *Service
-	validate       *validator.Validate
-	autoJoiner     AutoJoiner
-	googleClientID string
+	service            *Service
+	validate           *validator.Validate
+	autoJoiner         AutoJoiner
+	googleClientID     string
+	invitationAcceptor InvitationAcceptor
 }
 
 func NewHandler(service *Service, validate *validator.Validate, autoJoiner AutoJoiner, googleClientID string) *Handler {
 	return &Handler{service: service, validate: validate, autoJoiner: autoJoiner, googleClientID: googleClientID}
+}
+
+func (h *Handler) SetInvitationAcceptor(ia InvitationAcceptor) {
+	h.invitationAcceptor = ia
 }
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
@@ -50,6 +59,13 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		}
 		writeError(w, "internal server error", http.StatusInternalServerError)
 		return
+	}
+
+	// If invite token provided, accept invitation (which auto-joins)
+	if req.InviteToken != nil && *req.InviteToken != "" && h.invitationAcceptor != nil {
+		if err := h.invitationAcceptor.Accept(r.Context(), *req.InviteToken, resp.User.ID); err != nil {
+			slog.Warn("failed to accept invitation", "error", err, "user_id", resp.User.ID)
+		}
 	}
 
 	// Auto-join default channel

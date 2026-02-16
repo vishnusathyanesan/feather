@@ -16,7 +16,7 @@ const (
 	writeWait  = 10 * time.Second
 	pongWait   = 60 * time.Second
 	pingPeriod = 30 * time.Second
-	maxMsgSize = 4096
+	maxMsgSize = 16384
 )
 
 type Client struct {
@@ -92,6 +92,12 @@ func (c *Client) ReadPump() {
 		switch event.Type {
 		case model.EventTyping:
 			c.handleTyping(event)
+		case model.EventCallInitiate, model.EventCallAccept, model.EventCallDecline,
+			model.EventCallOffer, model.EventCallAnswer, model.EventCallICECandidate,
+			model.EventCallHangup:
+			if c.hub.callHandler != nil {
+				c.hub.callHandler(c.UserID, event)
+			}
 		}
 	}
 }

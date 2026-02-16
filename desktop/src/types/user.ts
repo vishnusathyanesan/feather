@@ -13,6 +13,7 @@ export interface RegisterRequest {
   email: string;
   name: string;
   password: string;
+  invite_token?: string;
 }
 
 export interface LoginRequest {

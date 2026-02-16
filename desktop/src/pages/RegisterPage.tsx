@@ -1,21 +1,37 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useAuthStore } from "../stores/authStore";
 import type { RegisterRequest } from "../types/user";
 import GoogleSignInButton from "../components/auth/GoogleSignInButton";
+import { apiFetch } from "../services/api";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get("invite") || undefined;
   const { register: registerUser, error, clearError } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [inviteValid, setInviteValid] = useState<boolean | null>(null);
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterRequest>();
+
+  // Validate invite token on mount
+  useEffect(() => {
+    if (inviteToken) {
+      apiFetch(`/invitations/validate/${inviteToken}`)
+        .then(() => setInviteValid(true))
+        .catch(() => setInviteValid(false));
+    }
+  }, [inviteToken]);
 
   const onSubmit = async (data: RegisterRequest) => {
     setIsSubmitting(true);
     clearError();
     try {
-      await registerUser(data);
+      await registerUser({
+        ...data,
+        invite_token: inviteToken,
+      });
       navigate("/");
     } catch {
       // error is set in store
@@ -34,6 +50,18 @@ export default function RegisterPage() {
         <h1 className="mb-8 text-center text-2xl font-bold text-gray-900 dark:text-gray-100">
           Create Account
         </h1>
+
+        {inviteToken && inviteValid === false && (
+          <div className="mb-4 rounded bg-yellow-50 p-3 text-sm text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400">
+            This invite link is invalid or has expired.
+          </div>
+        )}
+
+        {inviteToken && inviteValid === true && (
+          <div className="mb-4 rounded bg-green-50 p-3 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-400">
+            You've been invited to join Feather!
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 rounded bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">

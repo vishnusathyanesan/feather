@@ -17,6 +17,26 @@ const (
 	EventChannelDeleted  EventType = "channel.deleted"
 	EventMemberJoined    EventType = "member.joined"
 	EventMemberLeft      EventType = "member.left"
+
+	// DM events
+	EventDMCreated EventType = "dm.created"
+
+	// Mention events
+	EventMentionNew EventType = "mention.new"
+
+	// Call events
+	EventCallInitiate     EventType = "call.initiate"
+	EventCallRinging      EventType = "call.ringing"
+	EventCallAccept       EventType = "call.accept"
+	EventCallAccepted     EventType = "call.accepted"
+	EventCallDecline      EventType = "call.decline"
+	EventCallDeclined     EventType = "call.declined"
+	EventCallOffer        EventType = "call.offer"
+	EventCallAnswer       EventType = "call.answer"
+	EventCallICECandidate EventType = "call.ice_candidate"
+	EventCallHangup       EventType = "call.hangup"
+	EventCallEnded        EventType = "call.ended"
+	EventCallMissed       EventType = "call.missed"
 )
 
 type WebSocketEvent struct {

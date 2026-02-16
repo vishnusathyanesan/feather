@@ -6,6 +6,34 @@ interface Props {
   content: string;
 }
 
+function highlightMentions(text: string): (string | JSX.Element)[] {
+  const mentionRegex = /@(\w+)/g;
+  const parts: (string | JSX.Element)[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = mentionRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    parts.push(
+      <span
+        key={match.index}
+        className="rounded bg-blue-100 px-1 font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+      >
+        {match[0]}
+      </span>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts;
+}
+
 export default function MarkdownRenderer({ content }: Props) {
   return (
     <ReactMarkdown
@@ -58,7 +86,20 @@ export default function MarkdownRenderer({ content }: Props) {
           );
         },
         p({ children }) {
-          return <p className="mb-1 last:mb-0">{children}</p>;
+          // Process text children to highlight @mentions
+          const processed = Array.isArray(children)
+            ? children.map((child, i) =>
+                typeof child === "string" ? (
+                  <span key={i}>{highlightMentions(child)}</span>
+                ) : (
+                  child
+                )
+              )
+            : typeof children === "string"
+            ? highlightMentions(children)
+            : children;
+
+          return <p className="mb-1 last:mb-0">{processed}</p>;
         },
       }}
     >

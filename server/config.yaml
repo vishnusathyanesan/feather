@@ -32,3 +32,9 @@ rate_limit:
 
 oauth:
   google_client_id: ""
+
+webrtc:
+  enabled: true
+  stun_servers:
+    - "stun:stun.l.google.com:19302"
+  turn_servers: []

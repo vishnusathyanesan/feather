@@ -36,6 +36,9 @@ func (s *Server) setupRoutes() {
 
 		// Incoming webhook (token auth in URL)
 		r.Post("/api/v1/hooks/{token}", s.webhookHandler.HandleIncoming)
+
+		// Public invitation endpoints (validate only - accept requires auth)
+		r.Get("/api/v1/invitations/validate/{token}", s.invitationHandler.Validate)
 	})
 
 	// Protected routes
@@ -78,6 +81,9 @@ func (s *Server) setupRoutes() {
 				if s.fileHandler != nil {
 					r.Post("/files", s.fileHandler.Upload)
 				}
+
+				// Call history per channel
+				r.Get("/calls", s.callHandler.GetCallHistory)
 			})
 		})
 
@@ -102,5 +108,42 @@ func (s *Server) setupRoutes() {
 		if s.fileHandler != nil {
 			r.Get("/api/v1/files/{fileID}/download", s.fileHandler.Download)
 		}
+
+		// Invitations (authenticated)
+		r.Route("/api/v1/invitations", func(r chi.Router) {
+			r.Post("/", s.invitationHandler.Create)
+			r.Get("/", s.invitationHandler.List)
+			r.Delete("/{id}", s.invitationHandler.Revoke)
+			r.Post("/accept/{token}", s.invitationHandler.Accept)
+		})
+
+		// Direct Messages
+		r.Route("/api/v1/dms", func(r chi.Router) {
+			r.Post("/", s.dmHandler.CreateDM)
+			r.Post("/group", s.dmHandler.CreateGroupDM)
+			r.Get("/", s.dmHandler.ListDMs)
+		})
+
+		// Mentions
+		r.Get("/api/v1/mentions", s.mentionHandler.GetUnread)
+		r.Post("/api/v1/mentions/read", s.mentionHandler.MarkRead)
+
+		// User Groups
+		r.Route("/api/v1/groups", func(r chi.Router) {
+			r.Post("/", s.userGroupHandler.Create)
+			r.Get("/", s.userGroupHandler.List)
+
+			r.Route("/{id}", func(r chi.Router) {
+				r.Get("/", s.userGroupHandler.GetByID)
+				r.Patch("/", s.userGroupHandler.Update)
+				r.Delete("/", s.userGroupHandler.Delete)
+				r.Post("/members", s.userGroupHandler.AddMember)
+				r.Delete("/members/{userID}", s.userGroupHandler.RemoveMember)
+			})
+		})
+
+		// Calls
+		r.Get("/api/v1/calls/active", s.callHandler.GetActiveCall)
+		r.Get("/api/v1/rtc/config", s.callHandler.GetRTCConfig)
 	})
 }

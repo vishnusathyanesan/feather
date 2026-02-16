@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -17,15 +18,20 @@ import (
 
 	"github.com/feather-chat/feather/internal/audit"
 	"github.com/feather-chat/feather/internal/auth"
+	"github.com/feather-chat/feather/internal/call"
 	"github.com/feather-chat/feather/internal/channel"
 	"github.com/feather-chat/feather/internal/config"
+	"github.com/feather-chat/feather/internal/dm"
 	"github.com/feather-chat/feather/internal/file"
+	"github.com/feather-chat/feather/internal/invitation"
+	"github.com/feather-chat/feather/internal/mention"
 	"github.com/feather-chat/feather/internal/message"
 	"github.com/feather-chat/feather/internal/middleware"
 	"github.com/feather-chat/feather/internal/model"
 	"github.com/feather-chat/feather/internal/reaction"
 	"github.com/feather-chat/feather/internal/search"
 	"github.com/feather-chat/feather/internal/user"
+	"github.com/feather-chat/feather/internal/usergroup"
 	"github.com/feather-chat/feather/internal/webhook"
 	"github.com/feather-chat/feather/internal/websocket"
 )
@@ -40,18 +46,24 @@ type Server struct {
 	validate   *validator.Validate
 
 	// Handlers
-	authHandler    *auth.Handler
-	channelHandler *channel.Handler
-	messageHandler *message.Handler
-	reactionHandler *reaction.Handler
-	userHandler    *user.Handler
-	webhookHandler *webhook.Handler
-	searchHandler  *search.Handler
-	fileHandler    *file.Handler
-	wsHandler      *websocket.WSHandler
+	authHandler       *auth.Handler
+	channelHandler    *channel.Handler
+	messageHandler    *message.Handler
+	reactionHandler   *reaction.Handler
+	userHandler       *user.Handler
+	webhookHandler    *webhook.Handler
+	searchHandler     *search.Handler
+	fileHandler       *file.Handler
+	wsHandler         *websocket.WSHandler
+	invitationHandler *invitation.Handler
+	dmHandler         *dm.Handler
+	mentionHandler    *mention.Handler
+	userGroupHandler  *usergroup.Handler
+	callHandler       *call.Handler
 
 	// Services
 	channelService *channel.Service
+	callService    *call.Service
 	auditLogger    *audit.Logger
 }
 
@@ -96,12 +108,18 @@ func (s *Server) initServices(fileStorage *file.Storage) {
 	userRepo := user.NewRepository(s.db)
 	webhookRepo := webhook.NewRepository(s.db)
 	searchRepo := search.NewRepository(s.db)
+	invitationRepo := invitation.NewRepository(s.db)
+	dmRepo := dm.NewRepository(s.db)
+	mentionRepo := mention.NewRepository(s.db)
+	userGroupRepo := usergroup.NewRepository(s.db)
+	callRepo := call.NewRepository(s.db)
 
 	// Services
 	authService := auth.NewService(authRepo, tokenService)
 	s.channelService = channel.NewService(channelRepo)
 	userService := user.NewService(userRepo)
 	searchService := search.NewService(searchRepo)
+	invitationService := invitation.NewService(invitationRepo, s.channelService, s.cfg.Server.AppURL)
 
 	// Message service with broadcast
 	broadcastFn := func(channelID uuid.UUID, event model.WebSocketEvent) {
@@ -110,11 +128,36 @@ func (s *Server) initServices(fileStorage *file.Storage) {
 	messageService := message.NewService(messageRepo, s.channelService, broadcastFn)
 	reactionService := reaction.NewService(s.db, broadcastFn)
 
+	// Mention service (processes @mentions in messages)
+	mentionService := mention.NewService(mentionRepo, broadcastFn)
+	messageService.SetMentionProcessor(mentionService)
+
+	// DM service with subscribe callback
+	subscribeFn := func(userID uuid.UUID, channelID uuid.UUID) {
+		s.hub.SubscribeUserToChannel(userID, channelID)
+	}
+	dmService := dm.NewService(dmRepo, broadcastFn, subscribeFn)
+
+	// User group service
+	userGroupService := usergroup.NewService(userGroupRepo)
+
+	// Call service
+	sendToUserFn := func(userID uuid.UUID, data []byte) {
+		s.hub.SendToUser(userID, data)
+	}
+	s.callService = call.NewService(callRepo, broadcastFn, sendToUserFn)
+
+	// Set up call event handler on the hub
+	s.hub.SetCallHandler(func(userID uuid.UUID, event model.WebSocketEvent) {
+		s.handleCallWSEvent(userID, event)
+	})
+
 	// Webhook service (bot user ID will be set after seeding)
 	webhookService := webhook.NewService(webhookRepo, uuid.Nil, nil)
 
 	// Handlers
 	s.authHandler = auth.NewHandler(authService, s.validate, s.channelService, s.cfg.OAuth.GoogleClientID)
+	s.authHandler.SetInvitationAcceptor(invitationService)
 	s.channelHandler = channel.NewHandler(s.channelService, s.validate)
 	s.messageHandler = message.NewHandler(messageService, s.validate)
 	s.reactionHandler = reaction.NewHandler(reactionService, s.validate)
@@ -122,9 +165,62 @@ func (s *Server) initServices(fileStorage *file.Storage) {
 	s.webhookHandler = webhook.NewHandler(webhookService, s.validate)
 	s.searchHandler = search.NewHandler(searchService)
 	s.wsHandler = websocket.NewHandler(s.hub, s.cfg.JWT.Secret, userService)
+	s.invitationHandler = invitation.NewHandler(invitationService, s.validate)
+	s.dmHandler = dm.NewHandler(dmService, s.validate)
+	s.mentionHandler = mention.NewHandler(mentionService, s.validate)
+	s.userGroupHandler = usergroup.NewHandler(userGroupService, s.validate)
+	s.callHandler = call.NewHandler(s.callService, s.cfg.WebRTC)
 
 	if fileStorage != nil {
 		s.fileHandler = file.NewHandler(fileStorage, s.db, s.cfg.Upload.MaxSize)
+	}
+}
+
+func (s *Server) handleCallWSEvent(userID uuid.UUID, event model.WebSocketEvent) {
+	ctx := context.Background()
+
+	switch event.Type {
+	case model.EventCallInitiate:
+		var req model.InitiateCallRequest
+		if err := json.Unmarshal(event.Payload, &req); err != nil {
+			return
+		}
+		s.callService.Initiate(ctx, req, userID)
+
+	case model.EventCallAccept:
+		var payload struct {
+			CallID uuid.UUID `json:"call_id"`
+		}
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return
+		}
+		s.callService.Accept(ctx, payload.CallID, userID)
+
+	case model.EventCallDecline:
+		var payload struct {
+			CallID uuid.UUID `json:"call_id"`
+		}
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return
+		}
+		s.callService.Decline(ctx, payload.CallID, userID)
+
+	case model.EventCallHangup:
+		var payload struct {
+			CallID uuid.UUID `json:"call_id"`
+		}
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return
+		}
+		s.callService.Hangup(ctx, payload.CallID, userID)
+
+	case model.EventCallOffer, model.EventCallAnswer, model.EventCallICECandidate:
+		var msg call.SignalingMessage
+		if err := json.Unmarshal(event.Payload, &msg); err != nil {
+			return
+		}
+		msg.FromUser = userID
+		s.callService.RelaySignaling(event.Type, msg)
 	}
 }
 

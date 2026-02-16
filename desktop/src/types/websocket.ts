@@ -10,7 +10,21 @@ export type EventType =
   | "channel.updated"
   | "channel.deleted"
   | "member.joined"
-  | "member.left";
+  | "member.left"
+  | "dm.created"
+  | "mention.new"
+  | "call.initiate"
+  | "call.ringing"
+  | "call.accept"
+  | "call.accepted"
+  | "call.decline"
+  | "call.declined"
+  | "call.offer"
+  | "call.answer"
+  | "call.ice_candidate"
+  | "call.hangup"
+  | "call.ended"
+  | "call.missed";
 
 export interface WebSocketEvent {
   type: EventType;

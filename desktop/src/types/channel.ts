@@ -2,16 +2,17 @@ import { User } from "./user";
 
 export interface Channel {
   id: string;
-  name: string;
+  name: string | null;
   topic: string;
   description: string;
-  type: "public" | "private" | "system";
+  type: "public" | "private" | "system" | "dm" | "group_dm";
   is_readonly: boolean;
   creator_id?: string;
   created_at: string;
   updated_at: string;
   unread_count?: number;
   member_count?: number;
+  members?: User[];
 }
 
 export interface CreateChannelRequest {

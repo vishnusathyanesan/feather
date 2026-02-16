@@ -9,14 +9,16 @@ import (
 type ChannelType string
 
 const (
-	ChannelPublic  ChannelType = "public"
-	ChannelPrivate ChannelType = "private"
-	ChannelSystem  ChannelType = "system"
+	ChannelPublic   ChannelType = "public"
+	ChannelPrivate  ChannelType = "private"
+	ChannelSystem   ChannelType = "system"
+	ChannelDM       ChannelType = "dm"
+	ChannelGroupDM  ChannelType = "group_dm"
 )
 
 type Channel struct {
 	ID          uuid.UUID   `json:"id"`
-	Name        string      `json:"name"`
+	Name        *string     `json:"name"`
 	Topic       string      `json:"topic"`
 	Description string      `json:"description"`
 	Type        ChannelType `json:"type"`
@@ -26,6 +28,15 @@ type Channel struct {
 	UpdatedAt   time.Time   `json:"updated_at"`
 	UnreadCount int         `json:"unread_count,omitempty"`
 	MemberCount int         `json:"member_count,omitempty"`
+	Members     []User      `json:"members,omitempty"`
+}
+
+type CreateDMRequest struct {
+	UserID uuid.UUID `json:"user_id" validate:"required"`
+}
+
+type CreateGroupDMRequest struct {
+	UserIDs []uuid.UUID `json:"user_ids" validate:"required,min=2,max=8"`
 }
 
 type CreateChannelRequest struct {

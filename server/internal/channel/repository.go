@@ -88,8 +88,9 @@ func (r *Repository) List(ctx context.Context, userID uuid.UUID) ([]model.Channe
 				   ), 0
 			   ) as unread_count
 		FROM channels c
-		WHERE c.type = 'public'
-		   OR EXISTS (SELECT 1 FROM channel_members cm WHERE cm.channel_id = c.id AND cm.user_id = $1)
+		WHERE c.type NOT IN ('dm', 'group_dm')
+		  AND (c.type = 'public'
+		       OR EXISTS (SELECT 1 FROM channel_members cm WHERE cm.channel_id = c.id AND cm.user_id = $1))
 		ORDER BY c.name ASC
 	`
 	rows, err := r.db.Query(ctx, query, userID)

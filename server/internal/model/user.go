@@ -28,9 +28,10 @@ type User struct {
 }
 
 type RegisterRequest struct {
-	Email    string `json:"email" validate:"required,email,max=255"`
-	Name     string `json:"name" validate:"required,min=2,max=100"`
-	Password string `json:"password" validate:"required,min=8,max=72"`
+	Email       string  `json:"email" validate:"required,email,max=255"`
+	Name        string  `json:"name" validate:"required,min=2,max=100"`
+	Password    string  `json:"password" validate:"required,min=8,max=72"`
+	InviteToken *string `json:"invite_token,omitempty"`
 }
 
 type LoginRequest struct {
