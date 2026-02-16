@@ -84,8 +84,7 @@ jobs:
             cd ~/feather
             git pull origin main
 
-            # Pull pre-built API image
-            echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            # Pull pre-built API image (public repo = public package, no auth needed)
             docker pull ${{ env.API_IMAGE }}:latest
 
             # Restart with new image
