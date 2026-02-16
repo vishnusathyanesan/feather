@@ -21,7 +21,7 @@ export default function MentionsPanel({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-lg rounded-lg bg-white shadow-xl dark:bg-surface-secondary">
+      <div className="mx-2 w-full max-w-lg rounded-lg bg-white shadow-xl dark:bg-surface-secondary sm:mx-auto">
         <div className="flex items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
           <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
             Mentions

@@ -16,7 +16,7 @@ function getDMDisplayName(dm: Channel, currentUserId: string): string {
   return other?.name || "Direct Message";
 }
 
-export default function DMList() {
+export default function DMList({ onSelect }: { onSelect?: () => void }) {
   const { dms } = useDMStore();
   const { user } = useAuthStore();
   const { activeChannelId, setActiveChannel } = useChannelStore();
@@ -36,7 +36,7 @@ export default function DMList() {
         return (
           <button
             key={dm.id}
-            onClick={() => setActiveChannel(dm.id)}
+            onClick={() => { setActiveChannel(dm.id); onSelect?.(); }}
             className={`flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm ${
               isActive
                 ? "bg-blue-600/20 text-white"

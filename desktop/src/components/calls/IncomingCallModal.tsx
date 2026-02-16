@@ -1,13 +1,27 @@
 import { useCallStore } from "../../stores/callStore";
-import { acceptCall, declineCall } from "../../services/webrtc";
+import { acceptCall, declineCall, initiatePeerConnection } from "../../services/webrtc";
 
 export default function IncomingCallModal() {
   const { incomingCall } = useCallStore();
 
   if (!incomingCall) return null;
 
-  const handleAccept = () => {
+  const handleAccept = async () => {
+    // Initialize peer connection as callee (wait for offer from initiator)
+    try {
+      await initiatePeerConnection(
+        incomingCall.id,
+        incomingCall.channel_id,
+        incomingCall.call_type,
+        false,
+        incomingCall.initiator_id
+      );
+    } catch {
+      return; // Media denied or failed
+    }
     acceptCall(incomingCall.id);
+    useCallStore.getState().setActiveCall(incomingCall);
+    useCallStore.getState().setIncomingCall(null);
   };
 
   const handleDecline = () => {

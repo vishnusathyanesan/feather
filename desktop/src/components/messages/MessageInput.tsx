@@ -98,7 +98,7 @@ export default function MessageInput({ channelId, parentId, placeholder }: Props
   };
 
   return (
-    <div className="border-t border-gray-200 px-4 py-3 dark:border-gray-700">
+    <div className="border-t border-gray-200 px-2 py-2 dark:border-gray-700 sm:px-4 sm:py-3">
       {sendError && (
         <div className="mb-2 text-xs text-red-500">Failed to send message. Please try again.</div>
       )}

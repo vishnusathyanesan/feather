@@ -58,7 +58,7 @@ export default function CallView() {
 
         {/* Local video (PIP) */}
         {isVideo && localStream && (
-          <div className="absolute bottom-4 right-4 h-32 w-48 overflow-hidden rounded-lg border-2 border-white/20 shadow-lg">
+          <div className="absolute bottom-4 right-4 h-24 w-32 overflow-hidden rounded-lg border-2 border-white/20 shadow-lg sm:h-32 sm:w-48">
             <video
               ref={localVideoRef}
               autoPlay

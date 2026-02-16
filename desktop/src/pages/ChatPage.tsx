@@ -42,6 +42,7 @@ export default function ChatPage() {
   const [threadParentId, setThreadParentId] = useState<string | null>(null);
   const [showChannelSwitcher, setShowChannelSwitcher] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Find active channel across both channels and DMs
   const activeChannel =
@@ -141,7 +142,11 @@ export default function ChatPage() {
     // Call events
     const unsubCallRinging = wsService.on("call.ringing", (event: WebSocketEvent) => {
       const call = event.payload as Call;
-      if (call.initiator_id !== currentUser?.id) {
+      if (call.initiator_id === currentUser?.id) {
+        // I'm the caller — show "Calling..." UI
+        useCallStore.getState().setActiveCall(call);
+      } else {
+        // I'm being called
         useCallStore.getState().setIncomingCall(call);
       }
     });
@@ -150,6 +155,17 @@ export default function ChatPage() {
       const call = event.payload as Call;
       useCallStore.getState().setActiveCall(call);
       useCallStore.getState().setIncomingCall(null);
+
+      // If I'm the initiator, set up peer connection and create the SDP offer
+      if (call.initiator_id === currentUser?.id && call.accepted_by) {
+        initiatePeerConnection(
+          call.id,
+          call.channel_id,
+          call.call_type,
+          true,
+          call.accepted_by
+        ).catch(() => closePeerConnection());
+      }
     });
 
     const unsubCallDeclined = wsService.on("call.declined", () => {
@@ -226,7 +242,6 @@ export default function ChatPage() {
   const handleStartCall = useCallback(
     (type: "audio" | "video") => {
       if (!activeChannelId) return;
-      // Initiating call is handled by WS event flow
       wsService.send({
         type: "call.initiate",
         payload: { channel_id: activeChannelId, call_type: type },
@@ -235,17 +250,24 @@ export default function ChatPage() {
     [activeChannelId]
   );
 
+  const openSidebar = useCallback(() => setSidebarOpen(true), []);
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+
   return (
     <AppLayout>
-      <Sidebar onOpenChannelSwitcher={() => setShowChannelSwitcher(true)} />
+      <Sidebar
+        onOpenChannelSwitcher={() => setShowChannelSwitcher(true)}
+        open={sidebarOpen}
+        onClose={closeSidebar}
+      />
 
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {activeChannel ? (
           <>
             {isDM ? (
-              <DMHeader channel={activeChannel} onStartCall={handleStartCall} />
+              <DMHeader channel={activeChannel} onStartCall={handleStartCall} onOpenSidebar={openSidebar} />
             ) : (
-              <Header channel={activeChannel} />
+              <Header channel={activeChannel} onOpenSidebar={openSidebar} />
             )}
             <MessageList
               channelId={activeChannel.id}
@@ -254,8 +276,16 @@ export default function ChatPage() {
             <MessageInput channelId={activeChannel.id} />
           </>
         ) : (
-          <div className="flex flex-1 items-center justify-center text-gray-500">
-            Select a channel to start chatting
+          <div className="flex flex-1 items-center justify-center px-4 text-center text-gray-500">
+            <div>
+              <p>Select a channel to start chatting</p>
+              <button
+                onClick={openSidebar}
+                className="mt-2 text-blue-500 hover:text-blue-600 md:hidden"
+              >
+                Open channels
+              </button>
+            </div>
           </div>
         )}
       </div>

@@ -1,7 +1,7 @@
 import { useChannelStore } from "../../stores/channelStore";
 import Badge from "../common/Badge";
 
-export default function ChannelList() {
+export default function ChannelList({ onSelect }: { onSelect?: () => void }) {
   const { channels, activeChannelId, setActiveChannel } = useChannelStore();
 
   return (
@@ -9,7 +9,7 @@ export default function ChannelList() {
       {channels.map((channel) => (
         <button
           key={channel.id}
-          onClick={() => setActiveChannel(channel.id)}
+          onClick={() => { setActiveChannel(channel.id); onSelect?.(); }}
           className={`flex w-full items-center rounded px-2 py-1 text-sm ${
             activeChannelId === channel.id
               ? "bg-sidebar-active text-white"

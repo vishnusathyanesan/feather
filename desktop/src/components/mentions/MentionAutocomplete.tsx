@@ -127,7 +127,7 @@ export default function MentionAutocomplete({
   return (
     <div
       ref={listRef}
-      className="absolute bottom-full left-0 mb-1 w-64 rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
+      className="absolute bottom-full left-0 mb-1 w-full max-w-64 rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800 sm:w-64"
     >
       {items.map((item, i) => (
         <button

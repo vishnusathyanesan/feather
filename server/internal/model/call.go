@@ -28,6 +28,7 @@ type Call struct {
 	InitiatorID uuid.UUID  `json:"initiator_id"`
 	CallType    CallType   `json:"call_type"`
 	Status      CallStatus `json:"status"`
+	AcceptedBy  uuid.UUID  `json:"accepted_by,omitempty"`
 	StartedAt   *time.Time `json:"started_at,omitempty"`
 	EndedAt     *time.Time `json:"ended_at,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`

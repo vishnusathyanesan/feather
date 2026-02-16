@@ -7,6 +7,7 @@ export interface Call {
   initiator_id: string;
   call_type: CallType;
   status: CallStatus;
+  accepted_by?: string;
   started_at?: string;
   ended_at?: string;
   created_at: string;

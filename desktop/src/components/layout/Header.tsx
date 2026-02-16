@@ -4,23 +4,33 @@ import type { CallType } from "../../types/call";
 
 interface Props {
   channel: Channel;
+  onOpenSidebar?: () => void;
 }
 
-export default function Header({ channel }: Props) {
+export default function Header({ channel, onOpenSidebar }: Props) {
   const handleCall = (type: CallType) => {
     initiateCall(channel.id, type);
   };
 
   return (
-    <div className="flex items-center border-b border-gray-200 px-4 py-3 dark:border-gray-700">
-      <div className="flex-1">
+    <div className="flex items-center border-b border-gray-200 px-3 py-2.5 dark:border-gray-700 md:px-4 md:py-3">
+      {/* Mobile hamburger */}
+      <button
+        onClick={onOpenSidebar}
+        className="mr-2 rounded p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 md:hidden"
+      >
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+      <div className="min-w-0 flex-1">
         <div className="flex items-center">
           <span className="text-gray-500 dark:text-gray-400">#</span>
-          <h2 className="ml-1 text-sm font-bold text-gray-900 dark:text-gray-100">
+          <h2 className="ml-1 truncate text-sm font-bold text-gray-900 dark:text-gray-100">
             {channel.name}
           </h2>
           {channel.type === "private" && (
-            <span className="ml-2 rounded bg-gray-200 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+            <span className="ml-2 shrink-0 rounded bg-gray-200 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-gray-700 dark:text-gray-400">
               private
             </span>
           )}
@@ -31,7 +41,7 @@ export default function Header({ channel }: Props) {
           </p>
         )}
       </div>
-      <div className="flex items-center space-x-2 text-xs text-gray-500">
+      <div className="flex shrink-0 items-center space-x-1 text-xs text-gray-500 md:space-x-2">
         <button
           onClick={() => handleCall("audio")}
           className="rounded p-1.5 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-300"
@@ -51,7 +61,7 @@ export default function Header({ channel }: Props) {
           </svg>
         </button>
         {channel.member_count !== undefined && (
-          <span>{channel.member_count} members</span>
+          <span className="hidden sm:inline">{channel.member_count} members</span>
         )}
       </div>
     </div>

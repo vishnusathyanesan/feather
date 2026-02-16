@@ -52,7 +52,7 @@ export default function MessageList({ channelId, onOpenThread }: Props) {
     <div
       ref={parentRef}
       onScroll={handleScroll}
-      className="flex-1 overflow-y-auto px-4"
+      className="flex-1 overflow-y-auto px-2 sm:px-4"
     >
       {isLoading && messages.length === 0 && (
         <div className="flex h-full items-center justify-center text-sm text-gray-500">

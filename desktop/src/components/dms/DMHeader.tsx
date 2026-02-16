@@ -5,9 +5,10 @@ import { usePresenceStore } from "../../stores/presenceStore";
 interface Props {
   channel: Channel;
   onStartCall?: (type: "audio" | "video") => void;
+  onOpenSidebar?: () => void;
 }
 
-export default function DMHeader({ channel, onStartCall }: Props) {
+export default function DMHeader({ channel, onStartCall, onOpenSidebar }: Props) {
   const { user: currentUser } = useAuthStore();
   const { isOnline: checkOnline } = usePresenceStore();
 
@@ -25,11 +26,20 @@ export default function DMHeader({ channel, onStartCall }: Props) {
         .join(", ") || "Group DM";
 
   return (
-    <div className="flex items-center border-b border-gray-200 px-4 py-3 dark:border-gray-700">
-      <div className="flex-1">
+    <div className="flex items-center border-b border-gray-200 px-3 py-2.5 dark:border-gray-700 md:px-4 md:py-3">
+      {/* Mobile hamburger */}
+      <button
+        onClick={onOpenSidebar}
+        className="mr-2 rounded p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 md:hidden"
+      >
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           {isDM && otherUser && (
-            <div className="relative">
+            <div className="relative shrink-0">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-300 text-xs font-bold text-gray-700 dark:bg-gray-600 dark:text-gray-300">
                 {otherUser.name.charAt(0).toUpperCase()}
               </div>
@@ -40,8 +50,8 @@ export default function DMHeader({ channel, onStartCall }: Props) {
               />
             </div>
           )}
-          <div>
-            <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+          <div className="min-w-0">
+            <h2 className="truncate text-sm font-bold text-gray-900 dark:text-gray-100">
               {displayName}
             </h2>
             {isDM && (
@@ -53,10 +63,10 @@ export default function DMHeader({ channel, onStartCall }: Props) {
         </div>
       </div>
       {onStartCall && (
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1 md:gap-2">
           <button
             onClick={() => onStartCall("audio")}
-            className="rounded p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+            className="rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-300 md:p-2"
             title="Audio call"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -65,7 +75,7 @@ export default function DMHeader({ channel, onStartCall }: Props) {
           </button>
           <button
             onClick={() => onStartCall("video")}
-            className="rounded p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+            className="rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-300 md:p-2"
             title="Video call"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

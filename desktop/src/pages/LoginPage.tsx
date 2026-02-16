@@ -26,7 +26,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex h-full items-center justify-center bg-surface">
-      <div className="w-full max-w-sm p-8">
+      <div className="w-full max-w-sm px-4 py-6 sm:p-8">
         <div className="mb-6 flex justify-center">
           <img src="/feather-logo.png" alt="Feather" className="h-16 w-16 rounded-full" />
         </div>

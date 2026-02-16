@@ -16,12 +16,12 @@ export default function Modal({ children, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-[15vh]"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-start sm:pt-[15vh]"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-lg rounded-lg bg-white shadow-xl dark:bg-[#2a2a3e]">
+      <div className="max-h-[90vh] w-full overflow-y-auto rounded-t-lg bg-white shadow-xl dark:bg-[#2a2a3e] sm:max-w-lg sm:rounded-lg">
         {children}
       </div>
     </div>

@@ -108,6 +108,7 @@ func (s *Service) Accept(ctx context.Context, callID, userID uuid.UUID) (*model.
 	_ = s.repo.AddParticipant(ctx, callID, userID)
 
 	c.Status = model.CallStatusInProgress
+	c.AcceptedBy = userID
 	s.broadcastCallEvent(model.EventCallAccepted, c)
 
 	return c, nil
