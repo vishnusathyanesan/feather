@@ -44,6 +44,44 @@ func (r *Repository) FindExistingDM(ctx context.Context, userID1, userID2 uuid.U
 	return &ch, nil
 }
 
+// FindExistingGroupDM finds an existing group DM with exactly the given set of members.
+func (r *Repository) FindExistingGroupDM(ctx context.Context, memberIDs []uuid.UUID) (*model.Channel, error) {
+	if len(memberIDs) < 2 {
+		return nil, nil
+	}
+
+	// Find group_dm channels where the member count matches and all specified users are members.
+	query := `
+		SELECT c.id, c.name, c.topic, c.description, c.type, c.is_readonly, c.creator_id, c.created_at, c.updated_at
+		FROM channels c
+		WHERE c.type = 'group_dm'
+		  AND (SELECT COUNT(*) FROM channel_members cm WHERE cm.channel_id = c.id) = $1
+	`
+	// Add an EXISTS clause for each member
+	args := []interface{}{len(memberIDs)}
+	for i, id := range memberIDs {
+		query += fmt.Sprintf(
+			" AND EXISTS (SELECT 1 FROM channel_members cm WHERE cm.channel_id = c.id AND cm.user_id = $%d)",
+			i+2,
+		)
+		args = append(args, id)
+	}
+	query += " LIMIT 1"
+
+	var ch model.Channel
+	err := r.db.QueryRow(ctx, query, args...).Scan(
+		&ch.ID, &ch.Name, &ch.Topic, &ch.Description, &ch.Type, &ch.IsReadonly,
+		&ch.CreatorID, &ch.CreatedAt, &ch.UpdatedAt,
+	)
+	if err == pgx.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("find existing group dm: %w", err)
+	}
+	return &ch, nil
+}
+
 // CreateDMChannel creates a DM or group_dm channel and adds all members.
 func (r *Repository) CreateDMChannel(ctx context.Context, ch *model.Channel, memberIDs []uuid.UUID) error {
 	tx, err := r.db.Begin(ctx)

@@ -25,12 +25,18 @@ const ringingTimeout = 30 * time.Second
 type BroadcastFunc func(channelID uuid.UUID, event model.WebSocketEvent)
 type SendToUserFunc func(userID uuid.UUID, data []byte)
 
+// ChannelMemberChecker checks if a user is a member of a channel.
+type ChannelMemberChecker interface {
+	IsMember(ctx context.Context, channelID, userID uuid.UUID) (bool, error)
+}
+
 type Service struct {
-	repo       *Repository
-	broadcast  BroadcastFunc
-	sendToUser SendToUserFunc
-	timers     map[uuid.UUID]*time.Timer
-	timersMu   sync.Mutex
+	repo          *Repository
+	broadcast     BroadcastFunc
+	sendToUser    SendToUserFunc
+	memberChecker ChannelMemberChecker
+	timers        map[uuid.UUID]*time.Timer
+	timersMu      sync.Mutex
 }
 
 func NewService(repo *Repository, broadcast BroadcastFunc, sendToUser SendToUserFunc) *Service {
@@ -40,6 +46,11 @@ func NewService(repo *Repository, broadcast BroadcastFunc, sendToUser SendToUser
 		sendToUser: sendToUser,
 		timers:     make(map[uuid.UUID]*time.Timer),
 	}
+}
+
+// SetMemberChecker sets the channel membership checker for authorization.
+func (s *Service) SetMemberChecker(mc ChannelMemberChecker) {
+	s.memberChecker = mc
 }
 
 func (s *Service) Initiate(ctx context.Context, req model.InitiateCallRequest, initiatorID uuid.UUID) (*model.Call, error) {
@@ -111,6 +122,17 @@ func (s *Service) Decline(ctx context.Context, callID, userID uuid.UUID) error {
 		return ErrCallNotFound
 	}
 
+	// Verify the user is a member of the call's channel
+	if s.memberChecker != nil {
+		isMember, err := s.memberChecker.IsMember(ctx, c.ChannelID, userID)
+		if err != nil {
+			return err
+		}
+		if !isMember {
+			return ErrNotCallParticipant
+		}
+	}
+
 	s.cancelTimer(callID)
 
 	if err := s.repo.SetEnded(ctx, callID, model.CallStatusDeclined); err != nil {
@@ -134,12 +156,20 @@ func (s *Service) Hangup(ctx context.Context, callID, userID uuid.UUID) error {
 	s.cancelTimer(callID)
 	_ = s.repo.RemoveParticipant(ctx, callID, userID)
 
-	if err := s.repo.SetEnded(ctx, callID, model.CallStatusEnded); err != nil {
+	// Only end the call if no active participants remain
+	remaining, err := s.repo.CountActiveParticipants(ctx, callID)
+	if err != nil {
 		return err
 	}
 
-	c.Status = model.CallStatusEnded
-	s.broadcastCallEvent(model.EventCallEnded, c)
+	if remaining == 0 {
+		if err := s.repo.SetEnded(ctx, callID, model.CallStatusEnded); err != nil {
+			return err
+		}
+		c.Status = model.CallStatusEnded
+		s.broadcastCallEvent(model.EventCallEnded, c)
+	}
+
 	return nil
 }
 

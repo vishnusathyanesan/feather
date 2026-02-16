@@ -146,6 +146,7 @@ func (s *Server) initServices(fileStorage *file.Storage) {
 		s.hub.SendToUser(userID, data)
 	}
 	s.callService = call.NewService(callRepo, broadcastFn, sendToUserFn)
+	s.callService.SetMemberChecker(s.channelService)
 
 	// Set up call event handler on the hub
 	s.hub.SetCallHandler(func(userID uuid.UUID, event model.WebSocketEvent) {

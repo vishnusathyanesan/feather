@@ -106,9 +106,8 @@ func (s *Service) CreateGroupDM(ctx context.Context, creatorID uuid.UUID, userID
 		UpdatedAt: now,
 	}
 
-	// Include creator in members
+	// Include creator in members and deduplicate
 	allMembers := append([]uuid.UUID{creatorID}, userIDs...)
-	// Deduplicate
 	seen := make(map[uuid.UUID]bool)
 	var unique []uuid.UUID
 	for _, id := range allMembers {
@@ -116,6 +115,19 @@ func (s *Service) CreateGroupDM(ctx context.Context, creatorID uuid.UUID, userID
 			seen[id] = true
 			unique = append(unique, id)
 		}
+	}
+
+	// Check for existing group DM with the same members
+	existing, err := s.repo.FindExistingGroupDM(ctx, unique)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		members, err := s.repo.GetDMMembers(ctx, existing.ID)
+		if err == nil {
+			existing.Members = members
+		}
+		return existing, nil
 	}
 
 	if err := s.repo.CreateDMChannel(ctx, ch, unique); err != nil {

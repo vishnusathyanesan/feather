@@ -5,11 +5,11 @@ import (
 	"strings"
 )
 
-var mentionRegex = regexp.MustCompile(`@(\w+)`)
+var mentionRegex = regexp.MustCompile(`@([\w.\-]+)`)
 
 type ParsedMention struct {
 	Name string
-	Type string // "user", "group", "channel", "here"
+	Type string // "user_or_group", "channel", "here"
 }
 
 func ParseMentions(content string) []ParsedMention {

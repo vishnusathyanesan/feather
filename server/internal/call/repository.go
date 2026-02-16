@@ -109,6 +109,19 @@ func (r *Repository) RemoveParticipant(ctx context.Context, callID, userID uuid.
 	return nil
 }
 
+// CountActiveParticipants returns the number of participants who haven't left the call.
+func (r *Repository) CountActiveParticipants(ctx context.Context, callID uuid.UUID) (int, error) {
+	var count int
+	err := r.db.QueryRow(ctx,
+		`SELECT COUNT(*) FROM call_participants WHERE call_id = $1 AND left_at IS NULL`,
+		callID,
+	).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("count active participants: %w", err)
+	}
+	return count, nil
+}
+
 func (r *Repository) GetActiveCallForChannel(ctx context.Context, channelID uuid.UUID) (*model.Call, error) {
 	query := `
 		SELECT id, channel_id, initiator_id, call_type, status, started_at, ended_at, created_at
