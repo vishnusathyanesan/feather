@@ -7,7 +7,7 @@ interface Props {
 }
 
 function highlightMentions(text: string): (string | JSX.Element)[] {
-  const mentionRegex = /@(\w+)/g;
+  const mentionRegex = /@([\w.\-]+)/g;
   const parts: (string | JSX.Element)[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;

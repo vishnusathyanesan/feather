@@ -133,10 +133,16 @@ export default function ChatPage() {
       useDMStore.getState().addDM(dm);
     });
 
-    // Mention events
+    // Mention events — only add if this user is the mentioned user
     const unsubMentionNew = wsService.on("mention.new", (event: WebSocketEvent) => {
       const mention = event.payload as Mention;
-      useMentionStore.getState().addMention(mention);
+      if (mention.mentioned_user_id === currentUser?.id) {
+        useMentionStore.getState().addMention(mention);
+        notify(
+          `Mention from ${mention.message?.user?.name || "Someone"}`,
+          mention.message?.content?.substring(0, 100) || ""
+        );
+      }
     });
 
     // Call events

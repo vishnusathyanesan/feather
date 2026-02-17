@@ -71,6 +71,11 @@ func (s *Service) Create(ctx context.Context, channelID uuid.UUID, req model.Cre
 		return nil, err
 	}
 
+	// Link file attachments to this message
+	if len(req.AttachmentIDs) > 0 {
+		_ = s.repo.LinkAttachments(ctx, msg.ID, req.AttachmentIDs)
+	}
+
 	// Fetch full message with user data
 	full, err := s.repo.GetByID(ctx, msg.ID)
 	if err != nil {
@@ -81,6 +86,12 @@ func (s *Service) Create(ctx context.Context, channelID uuid.UUID, req model.Cre
 	reactions, err := s.repo.GetReactions(ctx, full.ID)
 	if err == nil {
 		full.Reactions = reactions
+	}
+
+	// Fetch attachments
+	attachments, err := s.repo.GetAttachmentsByMessageID(ctx, full.ID)
+	if err == nil && len(attachments) > 0 {
+		full.Attachments = attachments
 	}
 
 	if s.broadcast != nil {
@@ -109,7 +120,7 @@ func (s *Service) List(ctx context.Context, params model.MessageListParams, user
 		return nil, err
 	}
 
-	// Batch fetch reactions
+	// Batch fetch reactions and attachments
 	if len(messages) > 0 {
 		ids := make([]uuid.UUID, len(messages))
 		for i, m := range messages {
@@ -120,6 +131,14 @@ func (s *Service) List(ctx context.Context, params model.MessageListParams, user
 			for i := range messages {
 				if r, ok := reactions[messages[i].ID]; ok {
 					messages[i].Reactions = r
+				}
+			}
+		}
+		attachments, err := s.repo.GetAttachmentsForMessages(ctx, ids)
+		if err == nil {
+			for i := range messages {
+				if a, ok := attachments[messages[i].ID]; ok {
+					messages[i].Attachments = a
 				}
 			}
 		}

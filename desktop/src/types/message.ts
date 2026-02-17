@@ -6,6 +6,18 @@ export interface ReactionGroup {
   users: string[];
 }
 
+export interface FileAttachment {
+  id: string;
+  message_id?: string;
+  channel_id: string;
+  user_id: string;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  download_url?: string;
+  created_at: string;
+}
+
 export interface Message {
   id: string;
   channel_id: string;
@@ -20,12 +32,14 @@ export interface Message {
   created_at: string;
   user?: User;
   reactions?: ReactionGroup[];
+  attachments?: FileAttachment[];
   reply_count: number;
 }
 
 export interface CreateMessageRequest {
   content: string;
   parent_id?: string;
+  attachment_ids?: string[];
 }
 
 export interface UpdateMessageRequest {

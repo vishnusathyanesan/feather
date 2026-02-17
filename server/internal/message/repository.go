@@ -228,6 +228,72 @@ func (r *Repository) GetReactionsForMessages(ctx context.Context, messageIDs []u
 	return result, nil
 }
 
+// LinkAttachments sets message_id on the given file attachment IDs.
+func (r *Repository) LinkAttachments(ctx context.Context, messageID uuid.UUID, attachmentIDs []uuid.UUID) error {
+	if len(attachmentIDs) == 0 {
+		return nil
+	}
+	query := `UPDATE file_attachments SET message_id = $1 WHERE id = ANY($2) AND message_id IS NULL`
+	_, err := r.db.Exec(ctx, query, messageID, attachmentIDs)
+	if err != nil {
+		return fmt.Errorf("link attachments: %w", err)
+	}
+	return nil
+}
+
+// GetAttachmentsByMessageID returns attachments for a single message.
+func (r *Repository) GetAttachmentsByMessageID(ctx context.Context, messageID uuid.UUID) ([]model.FileAttachment, error) {
+	query := `
+		SELECT id, message_id, channel_id, user_id, filename, content_type, size_bytes, created_at
+		FROM file_attachments WHERE message_id = $1
+		ORDER BY created_at ASC
+	`
+	rows, err := r.db.Query(ctx, query, messageID)
+	if err != nil {
+		return nil, fmt.Errorf("get attachments: %w", err)
+	}
+	defer rows.Close()
+
+	var attachments []model.FileAttachment
+	for rows.Next() {
+		var a model.FileAttachment
+		if err := rows.Scan(&a.ID, &a.MessageID, &a.ChannelID, &a.UserID, &a.Filename, &a.ContentType, &a.SizeBytes, &a.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan attachment: %w", err)
+		}
+		attachments = append(attachments, a)
+	}
+	return attachments, rows.Err()
+}
+
+// GetAttachmentsForMessages returns attachments for multiple messages.
+func (r *Repository) GetAttachmentsForMessages(ctx context.Context, messageIDs []uuid.UUID) (map[uuid.UUID][]model.FileAttachment, error) {
+	if len(messageIDs) == 0 {
+		return make(map[uuid.UUID][]model.FileAttachment), nil
+	}
+	query := `
+		SELECT id, message_id, channel_id, user_id, filename, content_type, size_bytes, created_at
+		FROM file_attachments WHERE message_id = ANY($1)
+		ORDER BY created_at ASC
+	`
+	rows, err := r.db.Query(ctx, query, messageIDs)
+	if err != nil {
+		return nil, fmt.Errorf("get attachments for messages: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[uuid.UUID][]model.FileAttachment)
+	for rows.Next() {
+		var a model.FileAttachment
+		if err := rows.Scan(&a.ID, &a.MessageID, &a.ChannelID, &a.UserID, &a.Filename, &a.ContentType, &a.SizeBytes, &a.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan attachment: %w", err)
+		}
+		if a.MessageID != nil {
+			result[*a.MessageID] = append(result[*a.MessageID], a)
+		}
+	}
+	return result, rows.Err()
+}
+
 type scannable interface {
 	Scan(dest ...interface{}) error
 }

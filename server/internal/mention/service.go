@@ -3,6 +3,7 @@ package mention
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -40,7 +41,11 @@ func (s *Service) ProcessMentions(ctx context.Context, msg *model.Message) {
 
 func (s *Service) handleUserOrGroupMention(ctx context.Context, msg *model.Message, p ParsedMention) {
 	// Try user first
-	user, _ := s.repo.GetUserByName(ctx, p.Name)
+	user, err := s.repo.GetUserByName(ctx, p.Name)
+	if err != nil {
+		slog.Error("mention: failed to resolve user", "name", p.Name, "error", err)
+		return
+	}
 	if user != nil {
 		mn := &model.Mention{
 			ID:              uuid.New(),
@@ -50,16 +55,26 @@ func (s *Service) handleUserOrGroupMention(ctx context.Context, msg *model.Messa
 			MentionType:     "user",
 			CreatedAt:       time.Now(),
 		}
-		if err := s.repo.Create(ctx, mn); err == nil {
-			s.notifyMention(mn)
+		if err := s.repo.Create(ctx, mn); err != nil {
+			slog.Error("mention: failed to create", "error", err)
+			return
 		}
+		s.notifyMention(mn, msg)
 		return
 	}
 
 	// Try group
-	group, _ := s.repo.GetGroupByName(ctx, p.Name)
+	group, err := s.repo.GetGroupByName(ctx, p.Name)
+	if err != nil {
+		slog.Error("mention: failed to resolve group", "name", p.Name, "error", err)
+		return
+	}
 	if group != nil {
-		memberIDs, _ := s.repo.GetGroupMemberIDs(ctx, group.ID)
+		memberIDs, err := s.repo.GetGroupMemberIDs(ctx, group.ID)
+		if err != nil {
+			slog.Error("mention: failed to get group members", "group", p.Name, "error", err)
+			return
+		}
 		for _, memberID := range memberIDs {
 			if memberID == msg.UserID {
 				continue // Don't notify the sender
@@ -74,9 +89,11 @@ func (s *Service) handleUserOrGroupMention(ctx context.Context, msg *model.Messa
 				MentionType:      "group",
 				CreatedAt:        time.Now(),
 			}
-			if err := s.repo.Create(ctx, mn); err == nil {
-				s.notifyMention(mn)
+			if err := s.repo.Create(ctx, mn); err != nil {
+				slog.Error("mention: failed to create group mention", "error", err)
+				continue
 			}
+			s.notifyMention(mn, msg)
 		}
 	}
 }
@@ -84,6 +101,7 @@ func (s *Service) handleUserOrGroupMention(ctx context.Context, msg *model.Messa
 func (s *Service) handleChannelMention(ctx context.Context, msg *model.Message, p ParsedMention) {
 	memberIDs, err := s.repo.GetChannelMemberIDs(ctx, msg.ChannelID)
 	if err != nil {
+		slog.Error("mention: failed to get channel members", "error", err)
 		return
 	}
 
@@ -100,16 +118,20 @@ func (s *Service) handleChannelMention(ctx context.Context, msg *model.Message, 
 			MentionType:     p.Type,
 			CreatedAt:       time.Now(),
 		}
-		if err := s.repo.Create(ctx, mn); err == nil {
-			s.notifyMention(mn)
+		if err := s.repo.Create(ctx, mn); err != nil {
+			slog.Error("mention: failed to create channel mention", "error", err)
+			continue
 		}
+		s.notifyMention(mn, msg)
 	}
 }
 
-func (s *Service) notifyMention(mn *model.Mention) {
+func (s *Service) notifyMention(mn *model.Mention, msg *model.Message) {
 	if s.broadcast == nil || mn.MentionedUserID == nil {
 		return
 	}
+	// Attach message data so frontend can display mention context
+	mn.Message = msg
 	payload, _ := json.Marshal(mn)
 	event := model.WebSocketEvent{
 		Type:      model.EventMentionNew,

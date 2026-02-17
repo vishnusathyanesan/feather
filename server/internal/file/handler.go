@@ -13,19 +13,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/feather-chat/feather/internal/middleware"
+	"github.com/feather-chat/feather/internal/model"
 )
-
-type FileAttachment struct {
-	ID          uuid.UUID  `json:"id"`
-	MessageID   *uuid.UUID `json:"message_id,omitempty"`
-	ChannelID   uuid.UUID  `json:"channel_id"`
-	UserID      uuid.UUID  `json:"user_id"`
-	Filename    string     `json:"filename"`
-	ContentType string     `json:"content_type"`
-	SizeBytes   int64      `json:"size_bytes"`
-	StorageKey  string     `json:"-"`
-	CreatedAt   time.Time  `json:"created_at"`
-}
 
 type Handler struct {
 	storage *Storage
@@ -68,7 +57,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	attachment := FileAttachment{
+	attachment := model.FileAttachment{
 		ID:          fileID,
 		ChannelID:   channelID,
 		UserID:      userID,

@@ -7,6 +7,12 @@ import MarkdownRenderer from "../common/MarkdownRenderer";
 import AlertMessage from "../alerts/AlertMessage";
 import ReactionPicker from "./ReactionPicker";
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 interface Props {
   message: Message;
   onOpenThread: (messageId: string) => void;
@@ -99,6 +105,52 @@ function MessageItemInner({ message, onOpenThread }: Props) {
         ) : (
           <div className="text-sm text-gray-800 dark:text-gray-200">
             <MarkdownRenderer content={message.content} />
+          </div>
+        )}
+
+        {/* File attachments */}
+        {message.attachments && message.attachments.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {message.attachments.map((att) => {
+              const isImage = att.content_type.startsWith("image/");
+              const downloadUrl = `${import.meta.env.VITE_API_URL || "http://localhost:8080/api/v1"}/files/${att.id}/download`;
+              if (isImage) {
+                return (
+                  <a
+                    key={att.id}
+                    href={downloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block max-w-xs overflow-hidden rounded border border-gray-200 dark:border-gray-700"
+                  >
+                    <img
+                      src={downloadUrl}
+                      alt={att.filename}
+                      className="max-h-48 object-contain"
+                      loading="lazy"
+                    />
+                    <div className="px-2 py-1 text-xs text-gray-500">{att.filename}</div>
+                  </a>
+                );
+              }
+              return (
+                <a
+                  key={att.id}
+                  href={downloadUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 rounded border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/50"
+                >
+                  <svg className="h-5 w-5 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <div className="min-w-0">
+                    <div className="truncate text-blue-600 dark:text-blue-400">{att.filename}</div>
+                    <div className="text-xs text-gray-400">{formatFileSize(att.size_bytes)}</div>
+                  </div>
+                </a>
+              );
+            })}
           </div>
         )}
 
